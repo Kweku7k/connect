@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" />
+    
+    <script src="https://unpkg.com/boxicons@2.1.4/dist/boxicons.js"></script>
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://kit.fontawesome.com/091f1122a7.js" crossorigin="anonymous"></script>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BmbxuPwQa2lc/FVzBcNJ7UAyJxM6wuqIj61tLrc4wSX0szH/Ev+nYRRuWlolflfl" crossorigin="anonymous">
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{url_for('static', filename='css/presto.css')}}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xz/fonts@1/serve/plus-jakarta-display.min.css"> 
+    
+    <link rel="shortcut icon" href="./img/favicon2.png" type="image/x-icon">  
+
+    <link rel="apple-touch-icon" href="{{url_for('static', filename='img/prestologo1.png')}}">
+
+    <link rel="apple-touch-icon" sizes="180x180" href="{{url_for('static', filename='img/prestologo1.png')}}">
+    <link rel="apple-touch-icon" sizes="152x152" href="{{url_for('static', filename='img/prestologo1.png')}}">
+    <link rel="apple-touch-icon" sizes="120x120" href="{{url_for('static', filename='img/prestologo1.png')}}">
+    <link rel="apple-touch-icon" sizes="76x76" href="{{url_for('static', filename='img/prestologo1.png')}}">
+    <link rel="apple-touch-icon" sizes="60x60" href="{{url_for('static', filename='img/prestologo1.png')}}">
+    <!-- <script src="{{url_for('static', filename='js/script.js')}}"></script> -->
+
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+
+    <script src="https://unpkg.com/boxicons@2.1.4/dist/boxicons.js"></script>
+
+
+
+    {% block head %}
+  {% endblock %}
+
+    <title>PrestoConnect</title>
+  </head>
+  <body>
+      <!-- <div class="container"> -->
+        <nav style="margin: auto 3vh;" class="navbar navbar-expand-lg navbar-light bg-transparent flexBar">
+          <a class="navbar-brand" href="/">
+            <!-- <img src="./img/logo (1).png" width="50" alt="ikolilu"> -->
+            <h4 style="font-weight: 900; color: #302cff;">PrestoConnect</h4>
+          </a>
+
+        </nav>
+        <hr style="width: 95%; margin: auto;">
+  
+  <div class="container">
+          {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="flash flash-{{ category }}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+  </div>
+
+    {% if navlayout %}
+
+    <div class="flexNavBar">
+        <div class="header">
+            <a href="{{url_for('dashboard')}}">
+                <box-icon name='arrow-back' size='md'></box-icon>
+            </a>
+            <div>
+                <h4>{{navlayout.title}}</h4>
+                <h6 class="text-muted">{{navlayout.support}}</h6>
+            </div>  
+        </div>
+
+        <a href="{{url_for(navlayout.iconurl)}}"></a>
+        <box-icon name='{{navlayout.icon}}' size="md" ></box-icon>
+    </div>
+        
+    {% endif %}
+
+
+    {% block body %}
+    {% endblock %}
+
+
+    <div id="loading" style="height: 100vh; width: 100vw; display: none; background-color: white; position: fixed; top: 0; align-items: center; justify-content: center;">
+      <div>
+  
+        <div style="width: 100%; text-align: center;">
+
+          <div class="spinner-border m-5" role="status">
+            <span class="sr-only"></span>
+          </div>
+          <h6 style="text-align: center;">{{loadingMessage}}</h6>
+        </div>
+      </div>
+      </div>
+
+
+<script>
+    document.getElementById("loading").style.display = "flex"
+
+  // Define a function to run when the DOM is ready
+  function onDOMReady() {
+      // alert("DOM content is ready!");
+      document.getElementById("loading").style.display = "none"
+  }
+
+  // Attach the function to the DOMContentLoaded evååent
+  document.addEventListener("DOMContentLoaded", onDOMReady);
+</script>
+
+<script>
+  function showLoadingScreen() {
+    console.log("Firing loader")
+    console.log(document.getElementById("loading"))
+    document.getElementById("loading").style.display = "flex"
+    console.log(document.getElementById("loading").style.display)
+  }
+</script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/js/bootstrap.bundle.min.js" integrity="sha384-b5kHyXgcpbZJO/tY9Ul7kGkf1S0CWuKcCD38l8YkeH8z8QjE0GmW1gYU5S9FOnJ0" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/aos@next/dist/aos.js"></script>
+    <script>
+      AOS.init();
+    </script>
+
+  </body>
+
+  </html>
+

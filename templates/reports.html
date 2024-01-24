@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+
+{% block body %}
+<div class="container">
+
+    <div class="row" style="margin-top: 5vh;">
+
+    <div class="flexBar">
+
+        <div>
+            <h4>All Your Reports</h4>
+            <h6 class="text-muted">{{count}} reports</h6>
+        </div>
+    </div>
+    </div>
+
+    {% for report in reports %}
+    
+        <a href="{{url_for('report', id=report.id)}}">
+            <div class="card flex">
+                <div class="profile">
+                    <h6>{{report.groupName}} - {{report.sent}} messages sent</h6>
+                    <h6 class="text-muted">{{report.date.strftime("%c")}}</h6>
+                </div>
+            </div>
+        </a>
+
+    {% endfor %}
+
+</div>
+{% endblock %}

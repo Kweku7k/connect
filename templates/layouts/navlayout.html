@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+
+{% block navlayout %}
+
+<div class="flexNavBar">
+
+    <div class="header">
+        <a href="{{url_for('dashboard')}}">
+            <box-icon name='arrow-back' size='md'></box-icon>
+        </a>
+
+        <div>
+            <h4>Contacts</h4>
+            <h6 class="text-muted">36 contacts</h6>
+        </div>
+
+        
+    </div>
+
+<box-icon name='user-plus' size="md" ></box-icon>
+</div>
+{% endblock %}

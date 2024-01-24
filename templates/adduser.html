@@ -1,0 +1,67 @@
+{% extends "layout.html" %}
+
+{% block body %}
+<div class="container">
+
+
+<div class="defaultCard">
+    <form action="" method="post">
+        {{form.hidden_tag()}}
+        <h6>Send a quick message to your group</h6>
+
+        <div class="inputTextHolder">
+            <h6>{{form.group.label}}</h6>
+            {{form.group (class="inputTextCard", placeholder="Enter your message.")}}
+            {% for error in form.group.errors %}
+            <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+            {% endfor %}
+        </div>
+        
+        <div class="inputTextHolder">
+            <h6>{{form.name.label}}</h6>
+            {{form.name (class="inputTextCard", placeholder="Enter your name.")}}
+            {% for error in form.name.errors %}
+            <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+            {% endfor %}
+        </div>
+        
+        <div class="inputTextHolder">
+            <h6>{{form.phone.label}}</h6>
+            {{form.phone (class="inputTextCard", placeholder="Enter your phone.")}}
+            {% for error in form.phone.errors %}
+            <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+            {% endfor %}
+        </div>
+        
+        <div class="inputTextHolder">
+            <h6>{{form.email.label}}</h6>
+            {{form.email (class="inputTextCard", placeholder="Enter your email.")}}
+            {% for error in form.email.errors %}
+            <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+            {% endfor %}
+        </div>
+        
+        <div class="inputTextHolder">
+            <h6>{{form.notes.label}}</h6>
+            {{form.notes (class="inputTextCard", placeholder="Enter your notes.")}}
+            {% for error in form.notes.errors %}
+            <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+            {% endfor %}
+        </div>
+        
+        <div class="inputTextHolder">
+            <h6>{{form.birthday.label}}</h6>
+            {{form.birthday (class="inputTextCard", placeholder="Enter your birthday.")}}
+            {% for error in form.birthday.errors %}
+            <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+            {% endfor %}
+        </div>
+
+    </br>
+        {{form.submit (class="pill-button", style="width:100%", onclick="showLoadingScreen()")}}
+    </form>
+</div>
+
+</div>
+{% endblock %}
+

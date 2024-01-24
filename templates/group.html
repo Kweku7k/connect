@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+
+{% block body %}
+<div class="container">
+
+
+    {% for contact in group %}
+    
+        <div class="card flex">
+            <div class="profile">
+                <h6>{{contact.name}}</h6>
+                <h6 class="text-muted">{{contact.count}} contacts</h6>
+            </div>
+        </div>
+
+    {% endfor %}
+
+</div>
+{% endblock %}

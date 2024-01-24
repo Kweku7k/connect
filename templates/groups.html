@@ -1,0 +1,104 @@
+{% extends "layout.html" %}
+
+{% block body %}
+<div class="container">
+
+  <div class="flexBar" style="margin:3vh 0;">
+  {% if group %}
+  <div>
+      <h4>{{group.name}}</h4>
+      <!-- <h6 class="text-muted">{{group.name}}</h6> -->
+      <h6 class="text-muted">{{group.total}} contacts</h6>
+
+  </div>
+  <div>
+      <button class="pill-button" style="background-color: red; margin-right: 10px;" data-bs-toggle="modal" data-bs-target="#staticBackdrop">Delete</button>
+      <button class="pill-button-alternate" style="margin-right: 10px;">Edit Group</button>
+      <button class="pill-button">Send Message</button>
+  </div>
+  {% else %}
+  <!-- <div class="flexBar"> -->
+    <div >
+        <h4>Groups</h4>
+        <h6 class="text-muted">{{data.name}} groups</h6>
+    </div>
+
+      <button data-bs-toggle="modal" data-bs-target="#staticBackdrop" class="pill-button">Add A Group</button>
+
+
+<!-- </div> -->
+  {% endif %}
+
+</div>
+
+    
+
+    {% for group in grouplist %}
+    <a href="{{url_for('contacts', slug=group.id)}}">
+
+        <div class="card flex">
+            <div class="profile">
+                <h6>{{group.name}}</h6>
+                <h6 class="text-muted">{{group.total}} contacts</h6>
+            </div>
+        </div>
+
+    </a>
+
+    {% endfor %}
+
+</div>
+
+  
+  <!-- Modal -->
+  <div class="modal fade" id="staticBackdrop" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form method="POST" enctype="multipart/form-data" action="{{url_for('upload_file')}}">
+
+        <div class="modal-header">
+          <h5 class="modal-title" id="staticBackdropLabel">Create A New Group</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+                <div class="mb-3">
+                    <label for="" class="form-label">Group Name</label>
+                    <input
+                        type="text"
+                        name="name"
+                        id=""
+                        class="form-control"
+                        placeholder=""
+                        aria-describedby="helpId"
+                    />
+                    <small id="helpId" class="text-muted">If left empty will default</small>
+                </div>
+                <div class="mb-3">
+                    <label for="" class="form-label">Group Slug</label>
+                    <input
+                        type="text"
+                        name="slug"
+                        id=""
+                        class="form-control"
+                        placeholder=""
+                        aria-describedby="helpId"
+                    />
+                    <small id="helpId" class="text-muted">If left empty will default</small>
+                </div>
+
+                <div>
+                    <label for="">Group CSV</label>
+                    <input class="form-control" type="file" name="file" accept=".csv">
+                </div>
+
+            
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-primary">Create Group</button>
+        </div>
+      </div>
+    </form>
+    </div>
+  </div>
+{% endblock %}

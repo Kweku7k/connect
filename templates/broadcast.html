@@ -1,0 +1,54 @@
+{% extends "layout.html" %}
+
+{% block body %}
+
+<div class="container">
+
+
+    <div class="flexBar" style="margin: 5vh 0;">
+        <div>
+            <h4>Broadcast A Message</h4>
+            <h6 class="text-muted">{{smsbalance}} messages available</h6>
+        </div>
+        <button class="pill-button">Add a new contact</button>
+    </div>
+
+    <div class="col-md-8">
+                <div class="defaultCard">
+                    <form action="" method="post">
+                        {{form.hidden_tag()}}
+                        <h6>Send a quick message to your group</h6>
+
+                        <div class="inputTextHolder">
+                            <h6>{{form.senderId.label}}</h6>
+                            {{form.senderId (class="inputTextCard", placeholder="Enter your message.")}}
+                            {% for error in form.senderId.errors %}
+                            <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+                            {% endfor %}
+                        </div>
+                        <div class="inputTextHolder">
+                            <h6>{{form.group.label}}</h6>
+                            {{form.group (class="inputTextCard", placeholder="Enter your message.")}}
+                            {% for error in form.group.errors %}
+                            <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="inputTextHolder">
+                            <h6>{{form.message.label}}</h6>
+                            {{form.message (class="inputTextCard", placeholder="Enter your message.")}}
+                            {% for error in form.message.errors %}
+                            <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+                            {% endfor %}
+                        </div>
+    
+                    </br>
+                        {{form.submit (class="pill-button", style="width:100%", onclick="showLoadingScreen()")}}
+                    </form>
+                </div>
+            <!-- </div> -->
+        <!-- </div> -->
+    </div>
+</div>
+
+{% endblock %}

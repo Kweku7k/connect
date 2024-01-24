@@ -1,0 +1,96 @@
+{% extends "layout.html" %}
+
+{% block body %}
+<div class="container">   
+    <br>
+    <h6>{{group}}</h6>
+    <h4><b>Add A Contact</b></h4>
+    
+    <br>
+<form action="" method="post" enctype="multipart/form-data" >
+    
+        {{ form.hidden_tag() }} 
+        {{ form.csrf_token }}
+        
+    <div class="row">
+
+    <div class="col-md-6">
+        <label for="image-picker">
+            <div>
+                {% if candidate and candidate.testField %}
+                <img id="image-preview" style="width: 100%; object-fit:contain" src={{candidate.testField}}/>
+                {% else %}
+                <img id="image-preview" style="width: 100%; object-fit:contain" src="{{url_for('static', filename='img/camera.png')}}" alt="your image" />
+                {% endif %}
+            </div>      
+            <h6 id="error" style="color: red; display: none;">Please upload an image to continue</h6>
+        </label>
+
+    <input style="display:none" id="image-picker" type="file" accept="image/*" />
+
+    </div>
+
+        <div class="col-md-6">
+  
+    <div class="inputTextHolder" style="display: none;">
+        {{ form.picture.label }}
+        {{ form.picture (id="firebaseLink",class="inputTextCard") }}
+    </div>
+    
+    <div class="inputTextHolder" style="margin-top: 0;">
+        {{ form.name.label }}
+        {{ form.name (class="inputTextCard", placeholder="Enter nominee name") }}
+        {% if form.name.errors %}
+        <div class="invalid-feedback">
+            {% for error in form.name.errors %}
+                  <span>{{ error }}</span>
+              {% endfor %}
+          </div>
+          {% endif %}
+    </div>
+
+    <div class="all">
+        <div class="inputTextHolder">
+          {{ form.phone.label(id="label1") }}
+          {{ form.phone(class="inputTextCard inputTextCard-lg is-invalid") }}
+          {% if form.phone.errors %}
+          <div class="invalid-feedback">
+              {% for error in form.phone.errors %}
+                    <span>{{ error }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+        </div>
+      </div>
+      
+        <div class="inputTextHolder">
+            {{ form.group.label }}
+            {{ form.group (class="inputTextCard") }}
+            {% if form.group.errors %}
+            <div class="invalid-feedback">
+                {% for error in form.group.errors %}
+                      <span>{{ error }}</span>
+                  {% endfor %}
+              </div>
+              {% endif %}
+        </div>
+
+        </div>
+
+    </div>
+
+
+    <div >
+            {{form.submit (class="pill-button",style="width:100%")}}
+    </div>
+
+
+</form>
+
+</div>
+
+
+
+
+{% endblock %}

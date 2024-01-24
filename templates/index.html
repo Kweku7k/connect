@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+
+{% block body %}
+
+
+    <section class="hero">
+        <div class="container">
+            <div class="row"> 
+            <div class="col-md-6">
+                <br>
+                <h6 data-aos="fade-up" data-aos-delay="200" class="support">Presto Solutions</h6>
+                <h1 data-aos="fade-up" data-aos-delay="400" class="header" style="font-size: 45px;">Presto Connect</h1>
+                <br>
+                <h6 data-aos="fade-up" data-aos-delay="600" style="color: rgba(0, 0, 0, 0.568);" class="support"> Your ultimate student accommodation solution! Streamline your search for the perfect place while focusing on your studies. From cozy studios to shared apartments, we've got you covered. Safety is our priority, as we carefully vet all landlords and properties. Join our vibrant student community and find your ideal home away from home with PrestoStay today!</h5>
+                <br>
+                <div class="row" data-aos="fade-up" data-aos-delay="800">
+                    <div class="col-md-6" style="margin-bottom: 2vh;">
+                        <a href="{{url_for('dashboard')}}" style="width: 100%;">
+                            <button class="pill-button" style="width: 100%;">Go To Your Dashbaord</button>
+                        </a>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="{{url_for('issue')}}" style="width: 100%;">
+                            <button class="pill-button" style="background-color: white; width: 100%; color: #302cff; font-weight: 300; border: 1px solid blue;">Report A Problem</button>
+                        </a>
+                    </div>
+                </div>
+
+                </div>
+                <div class="col-md-6" data-aos="fade-left" data-aos-delay="100" data-aos-duration=" 8000">
+                <img src="../static/img/hero.png" style="width: 100%;" alt="">
+                </div>
+            
+            </div>
+        </div>
+    </section>
+{% endblock %}

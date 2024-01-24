@@ -1,0 +1,80 @@
+{% extends "layout.html" %}
+
+{% block body %}
+<div class="container">
+
+    <div class="row" style="margin-top: 5vh;">
+
+    <div class="flexBar">
+        {% if group %}
+        <div>
+            <h4>{{group.name}}</h4>
+            <h6 class="text-muted">{{group.total}} contacts</h6>
+
+        </div>
+        <div>
+          <a href="{{url_for('broadcast')}}">
+            <button class="pill-button" style="margin-right: 10px;">Send Message</button>
+          </a>
+          <a href="{{url_for('new')}}">
+
+            <button class="pill-button-alternate" style="margin-right: 10px;">Add A New Contact</button>
+          </a>
+            <button class="pill-button" style="background-color: red; margin-right: 10px;" data-bs-toggle="modal" data-bs-target="#deleteModal">Delete</button>
+        </div>
+        {% else %}
+        <div>
+            <h4>All Your Contacts</h4>
+            <h6 class="text-muted">{{count}} contacts</h6>
+        </div>
+        <button class="pill-button">Add a new contact</button>
+        {% endif %}
+
+    </div>
+    </div>
+
+    {% for contact in contactlist %}
+    
+        <div class="card flexBar">
+          <div class="profile">
+              <h6>{{contact.name}}</h6>
+              <h6 class="text-muted">{{contact.phoneNumber}}</h6>
+          </div>
+          <div>
+            <i class="fa fa-trash" aria-hidden="true"></i>
+          </div>
+        </div>
+
+    {% endfor %}
+
+</div>
+<div class="modal fade" id="deleteModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <h5 class="modal-title" id="deleteModalLabel">Please confirm deletiong of {{group.name}} group</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+
+            <h6>This is going to include deleting the contacts in this group</h6>
+            
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            {% if group %}
+            <a href="{{url_for('deleteGroup', id=group.id)}}" >
+            {% else %}  
+            <a href="#" >
+            {% endif %}
+            
+              <button type="submit" class="btn btn-danger" onclick="showLoadingScreen()">Delete!</button>
+            </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+{% endblock %}

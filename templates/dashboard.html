@@ -1,0 +1,175 @@
+{% extends "layout.html" %}
+
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+{% endblock %}
+
+{% block body %}
+<div class="container">
+<div class="info-block" style="margin-top: 5vh;">
+    <div class="flexBar">
+        <div>
+            <h4>Dashboard</h4>
+            <h6 class="text-muted">{{data.name}}</h6>
+        </div>
+
+        <a href="#">
+            <button class="pill-button">Share Subscription Link</button>
+        </a>
+
+    </div>
+<br>
+<div class="row">
+
+    <div class="col-md-6">
+    <div class="row">
+
+        <div class="col-md-6 col-6">
+            <a href="#">
+                <div data-aos="fade-up" class="card">
+                    <h6>Balance</h6>
+                    <h2 style="font-weight: 700;">GHS{{data.balance}}</h2>
+                    <!-- <h6 class="text-muted">{{data.smsbalance}} SMS Left</h6> -->
+                </div>
+            </a>
+        </div> 
+        
+        <div class="col-md-6 col-6">
+            <a href="{{url_for('contacts')}}">
+                <div data-aos="fade-up" data-aos-delay="100" class="card">
+                    <h6>Contacts </h6>
+                    <h2 style="font-weight: 700;">{{data.contacts}}</h2>
+                    <!-- <h6><u>Updated Today</u></h6> -->
+                </div>
+            </a>    
+        </div>
+        
+        <div class="col-md-6 col-6">
+            <a href="{{url_for('groups')}}">
+                <div data-aos="fade-up" data-aos-delay="100" class="card">
+                    <h6>Groups</h6>
+                    <h2 style="font-weight: 700;">{{data.groups}}</h2>
+                    <!-- <h6 ><u>{{data.roomsOccupied}} Fully Occupied</u></h6> -->
+                </div>
+            </a>
+        </div>   
+        
+        <div class="col-md-6 col-6">
+            <a href="{{url_for('reports')}}">    
+                <div data-aos="fade-up" data-aos-delay="100" class="card">
+                    <h6>Reports</h6>
+                    <h2 style="font-weight: 700;">{{data.reports}}</h2>
+                    <!-- <h6><u>View/ all</u></h6> -->
+                </div>
+            </a>
+        </div>
+    </div>
+
+
+    </div>
+
+    <div class="col-md-6">
+                <div class="defaultCard">
+                    <form action="" method="post">
+                        {{form.hidden_tag()}}
+                        <h6>Send a quick message to your group</h6>
+
+                        <div class="inputTextHolder">
+                            <h6>{{form.group.label}}</h6>
+                            {{form.group (class="inputTextCard", placeholder="Enter your message.")}}
+                            {% for error in form.group.errors %}
+                            <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="inputTextHolder">
+                            <h6>{{form.message.label}}</h6>
+                            {{form.message (class="inputTextCard", placeholder="Enter your message.")}}
+                            {% for error in form.message.errors %}
+                            <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+                            {% endfor %}
+                        </div>
+    
+                    </br>
+                        {{form.submit (class="pill-button", style="width:100%", onclick="showLoadingScreen()")}}
+                    </form>
+                </div>
+            <!-- </div> -->
+        <!-- </div> -->
+    </div>
+
+    </div>
+
+</div>
+
+<div>
+    <h4>Quick Actions</h4>
+    <br>
+    <div class="row">
+        <div class="col-md-3">
+            <div data-aos="fade-up"  data-aos-delay="400"  class="card">
+                <h6>Buy SMS Credits</h6>
+                <!-- <h1 style="font-weight: 700;">Withdraw</h1> -->
+                <h6>
+                    <a href="{{url_for('groups')}}">
+                        <button class="pill-button">Create Message</button>
+                    </a>
+
+            </h6>
+
+
+            </div>
+        </div>
+    
+        <div class="col-md-3">
+            <div data-aos="fade-up"  data-aos-delay="500"  class="card">
+                <h6>Report A Problem</h6>
+                <!-- <h1 style   ="font-weight: 700;">2</h1> -->
+                <h6>
+                    <a href="{{url_for('home')}}">
+                        <button class="pill-button" onclick="showModal()">Leave Feedback</button>
+                    </a>
+
+            </h6>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div data-aos="fade-up"  data-aos-delay="500"  class="card">
+                <h6>Request A Report</h6>
+                <!-- <h1 style   ="font-weight: 700;">2</h1> -->
+                <h6>
+                    <a href="{{url_for('home')}}">
+                        <button class="pill-button" onclick="showModal()">Requset Report</button>
+                    </a>
+
+            </h6>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div data-aos="fade-up"  data-aos-delay="500"  class="card">
+                <h6>Request A Report</h6>
+                <!-- <h1 style   ="font-weight: 700;">2</h1> -->
+                <h6>
+                    <a href="#">
+                        <button class="pill-button" style="background-color: red;" onclick="showModal()">Logout</button>
+                    </a>
+
+            </h6>
+            </div>
+        </div>
+    
+    </div>
+    </div>
+
+
+
+</div>
+
+
+
+
+
+
+{% endblock %}
