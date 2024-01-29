@@ -8,7 +8,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import requests
 
-from forms import AddUserForm, BroadcastForm
+from forms import *
 # from flask_login import UserMixin, login_user, logout_user, current_user, LoginManager, login_required
 
   
@@ -20,6 +20,16 @@ app.config['SQLALCHEMY_DATABASE_URI']= 'postgresql://postgres:adumatta@database-
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
+current_user = {
+    'id':1,
+    'username':'Kweku',
+    'appId':'PrestoSolutions'
+}
+
+baseUrl = os.environ.get('CONNECT_BASE_URL', 'sandbox.prestoghana.com')
+prestoUrl = os.environ.get('PRESTO_URL', 'sandbox.prestoghana.com')
+server = os.environ.get('SERVER', None)
+environment = os.environ.get('ENVIRONEMT', None)
 
 app.config['UPLOAD_FOLDER'] = 'uploads'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -38,6 +48,21 @@ class Groups(db.Model):
 
     def __repr__(self):
         return f"Group('id: {self.id}', 'total:{self.total}', 'slug:{self.slug}')"
+
+class Package(db.Model):
+    tablename = ['Package']
+
+    id = db.Column(db.Integer, primary_key=True)
+    price = db.Column(db.Integer, default=0)
+    credits = db.Column(db.Integer, default=0)
+    active = db.Column(db.Boolean, default=True)
+    count = db.Column(db.Boolean, default=True)
+
+    added = db.Column(db.DateTime, default=datetime.datetime.utcnow())
+
+    def __repr__(self):
+            return f"Package('id: {self.id}', 'price:{self.price}', 'credits:{self.credits}')"
+
 
 class Report(db.Model):
     tablename = ['Report']
@@ -89,10 +114,188 @@ class Message(db.Model):
 
     def __repr__(self):
         return f"Message('id: {self.appId}-{self.id}', 'to:{self.groupSlug}', 'total:{self.total}')"
-    
+
+
+class Transactions(db.Model):
+    tablename = ['Transactions']
+
+    id = db.Column(db.Integer, primary_key=True)
+    appId = db.Column(db.String)
+    userId = db.Column(db.String, nullable=False)
+    username = db.Column(db.String)
+    packageId = db.Column(db.String)
+    date_created = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    amount = db.Column(db.Float)
+    total = db.Column(db.Float)
+    charges = db.Column(db.Float)
+    balanceBefore = db.Column(db.Float)
+    balanceAfter = db.Column(db.Float)
+    pending = db.Column(db.Boolean, default=True)
+    requested = db.Column(db.Boolean, default=False)
+    paid = db.Column(db.Boolean, default=False)
+    account = db.Column(db.String)
+    network = db.Column(db.String)    
+    transactionType = db.Column(db.String)
+    ledgerEntryId = db.Column(db.Integer)
+    ref = db.Column(db.String) #notsupersure?
+    prestoTransactionId = db.Column(db.Integer)
+    channel = db.Column(db.String)
+    telegramChatId = db.Column(db.String)
+
+    def __repr__(self):
+        return f"Transaction(': {self.id}', 'Amount:{self.amount}', 'User:{self.username}', 'Paid:{self.paid}')"
+
+class LedgerEntry(db.Model):
+    tablename = ['LedgerEntry']
+
+    id = db.Column(db.Integer, primary_key=True)
+    userId = db.Column(db.String, nullable=False)
+    name = db.Column(db.String)
+    amount = db.Column(db.Float)
+    listing = db.Column(db.String)
+    count = db.Column(db.Integer, default=0)
+    balanceBefore = db.Column(db.Float)
+    balanceAfter = db.Column(db.Float)
+    transactionId = db.Column(db.Integer)
+    type = db.Column(db.String)
+    ref = db.Column(db.String)
+    date_created = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+
+    def __repr__(self):
+        return f"Payment Ghc('{self.amount}', ' - {self.userId}')"
+
+
 
 def reportError(e):
     print(e)
+
+
+def createTransaction(body):
+    newTransaction = Transactions(
+        userId=body.get("userId"),
+        appId=body.get("appId"),
+        username=body.get("username"),
+        packageId=body.get("packageId"),
+        amount=body.get("amount"),
+        balanceBefore=body.get("balanceBefore"),
+        account = body.get("account"),
+        network = body.get("network"),
+        channel = body.get("channel"),
+        transactionType = body.get('transactionType'),
+        total=body.get('total')
+    )
+
+    try:
+        db.session.add(newTransaction)
+        db.session.commit()
+    except Exception as e:
+        reportError(e)
+        flash('There was an error creating this transaction!')
+
+    return newTransaction
+
+
+def externalPay(transaction):
+    print("Triggering External Pay Transaction!")
+
+    paymentInfo = {
+        "name":transaction.username,
+        "transactionId":transaction.id,
+        "amount":transaction.amount,
+        "currency":"GHS",
+        "reference":transaction.username,
+        "charges":0.03,
+        "callbackUrl":baseUrl+"/confirm/"+str(transaction.id)
+    }
+
+    print(paymentInfo)
+
+    try:   
+        print("prestoUrl")
+        print(prestoUrl)
+        # response = requests.post(prestoUrl+"/externalpay/"+transaction.appId, json=paymentInfo)
+        response = requests.post("https://sandbox.prestoghana.com/externalpay/"+transaction.appId, json=paymentInfo)
+        transaction.ref = response.json()["transactionId"]
+    except Exception as e:
+        print(e)
+        print("Creating External Transaction failed!")
+
+    print(response)
+    print(response.json())
+    return response.json()
+
+
+def confirmPrestoPayment(transaction):
+    r = None
+    try:
+        print("prestoUrl")
+        print(prestoUrl)
+        r = requests.get(prestoUrl + '/verifykorbapayment/'+str(transaction.ref)).json()
+    except Exception as e:
+        print(e)
+    
+    print(r)
+    print("--------------status--------------")
+    status = r.get("status", "failed")
+    print(status)
+
+
+    print("--------------server--------------")
+    print(server)
+
+    print("--------------transaction channel--------------")
+    print(transaction.channel)
+
+    if status == 'success' or environment == 'DEV' and server == "LOCAL" or transaction.channel == 'BANK':
+
+        print("Attempting to update transctionId: " +str(transaction.id) + " to paid! in " + environment + "environment || SERVER:" + server)
+        
+        # findtrasaction, again because of the lag.
+        state = Transactions.query.get_or_404(transaction.id)
+        if state.paid != True:
+            try:
+                state.paid = True
+                db.session.commit()
+                print("Transaction : "+str(transaction.id) + " has been updated to paid!")
+
+            except Exception as e:
+                print("Failed to update transctionId: "+str(transaction.id )+ " to paid!")
+                app.logger.error(e)
+                reportError(e)
+
+            return True
+        return False
+
+    else:
+        print(str(transaction.id) + " has failed.")
+        return False
+
+
+@app.route('/addpackage', methods=['GET','POST'])
+def addPackage():
+    print("request")
+    body = request.json
+
+    package = {
+        'price':body.get('price'),
+        'credits':body.get('credits'),
+        'active':body.get('active'),
+    }
+
+    message = f"Package {package.price} already exists"
+    if Package.query.filter_by(price=body['price']) is None:
+            
+        try:
+            newPackage = Package(price = body['price'], credits=body['credits'], active=body['active'])
+            db.session.add(newPackage)
+            db.session.commit()
+            message = f'Package GHS{newPackage.price} has been uploaded successfully.'
+        except Exception as e:
+            reportError(e)
+            message = 'Upload of new package has failed.'
+
+    return message
+
 
 @app.route('/',methods=['GET','POST'])
 def home():
@@ -178,8 +381,6 @@ def dashboard():
             print("Contacts: ",contacts)
             print("Message:",message,"Group",group)
 
-            # 
-            
             contacts = ['0545977791','0545977791']
             # contacts = [contact.phoneNumber for contact in Contacts.query.all()]
             contacts = list(dict.fromkeys(contacts))
@@ -217,6 +418,12 @@ def contacts(slug = None):
 def issue():
     pass
 
+@app.route('/purchase', methods=['GET', 'POST'])
+def purchase():
+    form = TakePayment()
+    packages = Package.query.all()
+    return render_template('purchase.html', form=form, user=None, loadingMessage="loadingMessage",charges=0.03, packages=packages)
+
 @app.route('/groups/<string:appId>', methods=['GET', 'POST'])
 def getGroups(appId):
     data = getgroup(appId)
@@ -239,8 +446,6 @@ def groups():
         "iconurl":'adduser'
     }
 
-    
-
     return render_template('groups.html', data=data, grouplist=grouplist)
 
 @app.route('/adduser', methods=['GET', 'POST'])
@@ -248,6 +453,32 @@ def adduser():
     form = AddUserForm()
     return render_template('adduser.html', form=form)
 
+
+@app.route('/purchase/<int:id>', methods=['GET','POST'])
+def pay(id):
+    print("purchasing package id.")
+    package = Package.query.get_or_404(id)
+    user = current_user
+    
+    body={
+        "userId":1,
+        "appId":user.get("appId"),
+        "username":user.get("username"),
+        "amount":package.price,
+        "package":package.price,
+        "credits":package.credits,
+        "balanceBefore":user.get("balance"),
+        "transactionType":'Default',
+        "channel":"WEB"
+    }
+
+    # include date bought
+    # credits before purchase
+    transaction = createTransaction(body)
+
+    response = externalPay(transaction)
+
+    return redirect(response["url"])
 
 def sendMnotifySms(sender_id, recipients, message):
     endPoint = 'https://api.mnotify.com/api/sms/quick'

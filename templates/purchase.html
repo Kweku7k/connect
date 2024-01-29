@@ -1,0 +1,135 @@
+{% extends "layout.html" %}
+
+{% block head %}
+
+{% endblock %}
+{% block body %}
+
+<div class="container">
+    <div class="row" style="justify-content: space-around; margin-top: 5vh;">
+
+        <!-- <div class="col-md-6"> -->
+                <div class="defaultCard">
+                    <form action="" method="post">
+                        {{form.hidden_tag()}}
+                        <h6>Buy a prepaid package </h6>
+                        
+                        <div class="inputTextHolder">
+                            <h6>{{form.amount.label}}</h6>
+                            {{form.amount (class="inputTextCard", placeholder="Enter your amount.")}}
+                            {% for error in form.amount.errors %}
+                            <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+                            {% endfor %}
+                        </div>
+    
+                    </br>
+                        {{form.submit (class="pill-button", style="width:100%", onclick="showLoadingScreen()")}}
+                    </form>
+                </div>
+    <!-- </div> -->
+    </div>
+    <div>
+        <h4>Packages</h4>
+        <h6 class="text-muted">Buy a package</h6>
+
+        <br/>
+
+        <div class="row">
+
+            {% for package in packages %}
+            <a href="{{url_for('pay', id=package.id)}}">
+                <div class="col-md-4">
+                    <div class="card">
+                        <h6>GHC{{package.price}} </h6>
+                        <h6 class="text-muted">{{package.credits}} messages</h6>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+
+        </div>
+
+    </div>
+</div>
+
+<!-- Button trigger modal -->
+<!-- <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
+    Launch demo modal
+  </button> -->
+  
+  <!-- Modal -->
+  
+<script>
+
+    function closeModal() {
+        document.getElementById("submitButton").click()
+        console.log('Attempting to close modal')
+        showLoadingScreen()
+        // $('#exampleModal').modal('hide');
+    }
+
+    function tally() {
+        // Amount
+        amount = parseFloat(document.getElementById("amount").value)
+        console.log(amount)
+        charges = '{{charges}}'
+        console.log(charges)
+        total = (amount*charges) 
+        console.log(total)
+        total = amount + total
+        chargeAmount = total - amount
+        chargeAmount = chargeAmount.toFixed(2)
+        console.log(total)
+        // Amount
+        document.getElementById("modal-amount").innerHTML = amount
+        document.getElementById("modal-total").innerHTML = "GHS "+total
+        document.getElementById("modal-charge").innerHTML = "GHS "+chargeAmount
+
+        // console.log(amount)
+        saveData()
+    }
+
+
+    // Function to save field entries in session storage
+    function saveData() {
+        var phone = document.getElementById('phone').value;
+        var name = document.getElementById('name').value;
+        var network = document.getElementById('network').value;
+
+        // Set session storage with field entries
+        sessionStorage.setItem('phone', phone);
+        sessionStorage.setItem('name', name);
+        sessionStorage.setItem('network', network);
+
+        console.log("Data saved in session storage!");
+    }
+
+    // Function to load saved data from session storage
+    function loadData() {
+        console.log(sessionStorage)
+        console.log(sessionStorage.name)
+        console.log(sessionStorage.phone)
+        console.log(sessionStorage.network)
+        
+        var name = sessionStorage.getItem('name');
+        var phone = sessionStorage.getItem('phone');
+        var network = sessionStorage.getItem('network');
+
+        // Set field values from session storage
+        if (name) {
+            document.getElementById('name').value = name;
+        }
+        if (phone) {
+            document.getElementById('phone').value = phone;
+        }
+        if (network) {
+            document.getElementById('network').value = network;
+        }
+    }
+
+    // Call the loadData function when the page loads
+    window.onload = loadData;
+
+</script>
+
+{% endblock %}
