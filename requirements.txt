@@ -1,0 +1,6 @@
+flask
+flask_sqlalchemy
+flask_migrate
+requests
+flask_wtf
+psycopg2-binary
