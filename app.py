@@ -904,6 +904,8 @@ def confirm(transactionId):
 @app.route('/api/broadcast', methods=['GET', 'POST'])
 def broadcast_api():
     # get message
+    print("request")
+    print(request.json)
     body = request.json
     pprint.pprint(body)
 
