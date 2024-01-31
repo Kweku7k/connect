@@ -4,3 +4,4 @@ flask_migrate
 requests
 flask_wtf
 psycopg2-binary
+urllib3
