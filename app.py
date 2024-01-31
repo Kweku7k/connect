@@ -11,8 +11,6 @@ import requests
 from forms import *
 # from flask_login import UserMixin, login_user, logout_user, current_user, LoginManager, login_required
 
-  
-
 app=Flask(__name__)
 app.config['SECRET_KEY'] = 'c288b2157916b13s523242q3wede00ba242sdqwc676dfde'
 app.config['SQLALCHEMY_DATABASE_URI']= 'postgresql://postgres:adumatta@database-1.crebgu8kjb7o.eu-north-1.rds.amazonaws.com:5432/connect'
@@ -22,7 +20,7 @@ migrate = Migrate(app, db)
 
 current_user = {
     'id':1,
-    'username':'Kweku',
+    'username':'Kweku', 
     'appId':'PrestoSolutions'
 }
 
@@ -33,6 +31,9 @@ environment = os.environ.get('ENVIRONEMT', None)
 
 app.config['UPLOAD_FOLDER'] = 'uploads'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+chat_id = os.environ.get('presto_telegram_bot')
+telegramToken = os.environ.get('telegram_token')
 
 # ------ MODELS
 
@@ -48,6 +49,21 @@ class Groups(db.Model):
 
     def __repr__(self):
         return f"Group('id: {self.id}', 'total:{self.total}', 'slug:{self.slug}')"
+
+
+class User(db.Model):
+    tablename = ['User']
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String)
+    appId = db.Column(db.String)
+    slug = db.Column(db.String)
+    total = db.Column(db.Integer, default=0)
+    added = db.Column(db.DateTime, default=datetime.datetime.utcnow())
+
+    def __repr__(self):
+        return f"User('id: {self.id}', 'slug:{self.slug}')"
+
 
 class Package(db.Model):
     tablename = ['Package']
@@ -224,9 +240,10 @@ def externalPay(transaction):
     print(response.json())
     return response.json()
 
-
 def confirmPrestoPayment(transaction):
+
     r = None
+
     try:
         print("prestoUrl")
         print(prestoUrl)
@@ -270,6 +287,62 @@ def confirmPrestoPayment(transaction):
         print(str(transaction.id) + " has failed.")
         return False
 
+def updateUserBalance(transaction):
+ # find vote with same transaction id.
+    alreadyCounted = LedgerEntry.query.filter_by(transactionId = transaction.id).first()
+    if alreadyCounted != None: #If found.
+        return None
+
+    try: #Create a new vote
+        newLedgerEntry = LedgerEntry(userId=transaction.userId, name=transaction.username, package = transaction.package, amount=transaction.amount, transactionId=transaction.id)
+        db.session.add(newLedgerEntry)
+        db.session.commit()
+    except Exception as e:
+        app.logger.error(e)
+        reportError(str(e))
+        app.logger.error("Couldnt create ledgerEntry for " + transaction.username)
+
+    try: #SET UP DECIMAL POINTS
+        user = User.query.get_or_404(int(transaction.userId))
+        package = Package.query.filter_by(slug = user.listingSlug).first()
+        
+        transaction.balanceBefore = user.balance
+        transaction.balanceAfter = user.balance - newLedgerEntry.amount
+
+        package.amountRecieved += newLedgerEntry.amount
+
+        print("----------------------- Updating balance ---------------------------")
+        print("Attempting to update " + user.username + " balance from " + str(transaction.balanceBefore) + " to " + str(transaction.balanceAfter))
+        sendTelegram("Attempting to update " + user.username + " balance from " + str(transaction.balanceBefore) + " to " + str(transaction.balanceAfter))
+        
+        user.balance -= newLedgerEntry.amount
+        user.paid += newLedgerEntry.amount
+        
+        transaction.ledgerEntryId = newLedgerEntry.id
+
+        db.session.commit()
+
+        print("----------------------- Updated Successfully! ---------------------------")
+
+    except Exception as e:
+        app.logger.error("Updating user " + user.username + " balance has failed." )
+        app.logger.error(e)
+        reportError(str(e))
+
+    return newLedgerEntry
+
+def sendTelegram(message_text, chat_id=chat_id):
+    params = {
+        'chat_id': chat_id,
+        'text': message_text
+    }
+
+    try:
+        response = requests.post(url = f'https://api.telegram.org/bot{telegramToken}/sendMessage', params=params)
+        return response
+    except Exception as e:
+        reportError(e)
+        return e
 
 @app.route('/addpackage', methods=['GET','POST'])
 def addPackage():
@@ -723,6 +796,79 @@ def new():
             print(form.errors)
 
     return render_template('addcontact.html', form=form)
+
+
+@app.route('/confirm/<string:transactionId>', methods=['GET', 'POST'])
+def confirm(transactionId):
+    if request.is_json:
+        print("-------------- CALLBACK RECIEVED --------------- ")
+        print(request.url)
+        print("-------------- CALLBACK DATA --------------- ")
+        print(request.json)
+
+        message = "In Progress"
+        transaction = Transactions.query.get_or_404(transactionId)
+        print(transaction)
+        # SECURE THIS ROUTE
+
+        if transaction.paid == False:
+            body = request.json
+            try:
+                print("Attempting to update transaction id: " + str(transaction.id) + " with prestoRef ")
+                transactionRef = body["transactionId"]
+                print(transactionRef)
+
+                transaction.ref = transactionRef
+                transaction.account = body.get("account")
+                transaction.channel = body.get("channel")
+
+                db.session.commit()
+            except Exception as e:
+                print(e)
+
+            message = "Failed Transaction"
+
+            if confirmPrestoPayment(transaction) == True:
+
+                message = "Duplicate"
+                entry = updateUserBalance(transaction)
+                if entry != None: #If a vote was created
+
+                    responseMessage = transaction.listing + "\nSuccessfully bought " +str(transaction.amount) + " for " + str(transaction.username) + "." + "\nBefore: " + str(transaction.balanceBefore) + "\nAfter: "+ str(transaction.balanceAfter) + "\nTransactionId:" + str(transaction.id) + "\nAccount:" + str(transaction.network) + " : "+ str(transaction.account) + "\nLedgerId: " + str(entry.id)
+                    message = "Student Name:"+ str(transaction.username) + "\nHostel Name: "+transaction.listing + "\nAmount:" + str(transaction.amount) + "\nPayment Method:"+transaction.channel + "\nPayment  Date" + transaction.date_created.strftime("%Y-%m-%d %H:%M:%S") + "\nReceipt Number: PRS" + str(transaction.id) + "REF" + str(transaction.ref) +"\nYour payment has been received successfully!."
+
+                    print("send_sms || PrestoStay)")
+                    sendMnotifySms("PrestoHelp",transaction.account, message)
+
+                    print(responseMessage)
+                    sendTelegram(responseMessage)
+                    sendTelegram(responseMessage, listing.chatId)
+                    
+                    emails = [ admin.email for admin in User.query.filter_by(role = 'admin').all()]
+                    print(emails)
+
+                    sendAnEmail(transaction.username, f'GHC {transaction.amount} SUCCESSFULLY RECIEVED', responseMessage, emails)
+                    flash(f'This transaction was successful! You should recieve and sms.')
+                else:
+                    app.logger.error("Transaction: " + str(transaction.id) + " was attempting to be recreated.")
+                
+            else:
+                message = "This transaction has either failed or is being processed. Please check or try again."
+
+        responseBody = {
+            "message":message,
+            "transactionId":transaction.id,
+            "prestoTransactionId":transaction.ref,
+            "paid":transaction.paid
+        }
+        print(responseBody)
+        return responseBody
+    else:
+        transaction = Transactions.query.get_or_404(transactionId)
+        user = User.query.get_or_404(transaction.userId)
+        return render_template('transaction.html', transaction=transaction, user=user)
+
+
 
 if __name__ == '__main__':
     app.run(port=5000,host='0.0.0.0',debug=True)
