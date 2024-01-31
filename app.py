@@ -7,6 +7,7 @@ from flask import Flask, flash,redirect,url_for,render_template,request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import requests
+from sqlalchemy.dialects.postgresql import JSON
 
 from forms import *
 # from flask_login import UserMixin, login_user, logout_user, current_user, LoginManager, login_required
@@ -86,6 +87,7 @@ class Report(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     status = db.Column(db.String)
     appId = db.Column(db.String)
+    senderId = db.Column(db.String)
     message = db.Column(db.String)
     groupName = db.Column(db.String)
     sent = db.Column(db.Integer)
@@ -95,6 +97,8 @@ class Report(db.Model):
     groupId = db.Column(db.Integer)
     type = db.Column(db.String)
     providerId = db.Column(db.String)
+    rawdata = db.Column(JSON, nullable=True)
+    responsedata = db.Column(JSON, nullable=True)
     date = db.Column(db.DateTime, default=datetime.datetime.utcnow())
 
     def __repr__(self):
@@ -399,6 +403,9 @@ def broadcast():
 
             groupData = Groups.query.get_or_404(groupId)
 
+            # check for either groupId or contact array
+
+
             if group is not None:
                 contacts = [contacts.phoneNumber for contacts in group]
             else:
@@ -418,8 +425,12 @@ def broadcast():
                 "groupId":groupData.id
             }
 
+            rawdata = {
+                "contacts":contacts
+            }
+
             # create report.
-            createReport(response)
+            createReport(response,rawdata)
 
             if response is not None:
                 flash(f'Messages were sent succesfully.')
@@ -744,7 +755,7 @@ def deleteGroup(id):
 
     return redirect(url_for('groups'))
 
-def createReport(reportBody):
+def createReport(reportBody, rawdata):
     print("Creating Report ")
     pprint.pprint(reportBody)
 
@@ -752,7 +763,7 @@ def createReport(reportBody):
     prestoSummaryReport = reportBody['presto_summary_data']
 
     try:
-        newReport = Report(status=reportBody.get('status', None), appId=reportBody.get('appId', 'default'), contacts=summaryReport.get('contacts', 'default'), sent=summaryReport.get('total_sent', None), rejected=summaryReport.get('total_rejected', None), credit=summaryReport.get('credit_used', None), type=summaryReport.get('type', None), providerId=summaryReport.get('_id', None), message=prestoSummaryReport.get('message', None),  groupName=prestoSummaryReport.get('groupName', None),  groupId=prestoSummaryReport.get('groupId', None), )
+        newReport = Report(rawdata=rawdata, responsedata=reportBody,status=reportBody.get('status', None), appId=reportBody.get('appId', 'default'), contacts=summaryReport.get('contacts', 'default'), sent=summaryReport.get('total_sent', None), rejected=summaryReport.get('total_rejected', None), credit=summaryReport.get('credit_used', None), type=summaryReport.get('type', None), providerId=summaryReport.get('_id', None), message=prestoSummaryReport.get('message', None),  groupName=prestoSummaryReport.get('groupName', None),  groupId=prestoSummaryReport.get('groupId', None), )
         db.session.add(newReport)
         db.session.commit()
     except Exception as e:
@@ -775,7 +786,28 @@ def reports():
 @app.route('/report/<int:id>', methods=['GET', 'POST'])
 def report(id):
     report = Report.query.get_or_404(id)
-    return render_template('report.html', report=report)
+
+    print("RAW DATA")
+    pprint.pprint(report.rawdata)
+    print("RESPONSE DATA")
+    pprint.pprint(report.responsedata)
+
+    allcontacts = report.rawdata['contacts']
+    successfulcontacts = report.responsedata['summary']['numbers_sent']
+    
+    print("Intersecting")
+    print(allcontacts)
+    print(successfulcontacts)
+    
+    contacts = []
+    for c in allcontacts:
+        if c in successfulcontacts:
+            contacts.append({c:1})
+        else:
+            contacts.append({c:0})
+
+    print(contacts)
+    return render_template('report.html', report=report, contacts=contacts)
 
 @app.route('/new', methods=['GET', 'POST'])
 def new():
@@ -869,6 +901,40 @@ def confirm(transactionId):
         return render_template('transaction.html', transaction=transaction, user=user)
 
 
+@app.route('/api/broadcast', methods=['GET', 'POST'])
+def broadcast_api():
+    # get message
+    body = request.json
+    pprint.pprint(body)
+
+    message = body.get('message') + f"\n{datetime.datetime.now().strftime('%c')}"+"\nPowered By PrestoConnect"
+    senderId = body.get('senderId', 'PrestoHelp')
+    contacts = body.get('contacts', None)
+    # array of contacts
+
+    print("senderId")
+    print(senderId)
+
+    print("Contacts: ",contacts)
+
+    # remove duplicates
+    contacts = list(dict.fromkeys(contacts))
+    # Remove spaces and get last 9 characters
+    contacts = ["0"+item.replace(" ", "")[-9:] for item in contacts]
+    print(contacts)
+
+    response = sendMnotifySms(senderId, contacts, message)
+
+    response["presto_summary_data"] = {
+        "message":message,
+        "groupName":"API_SMS",
+        "groupId":0
+    }
+
+    # create report.
+    createReport(response, body)
+
+    return response
 
 if __name__ == '__main__':
     app.run(port=5000,host='0.0.0.0',debug=True)

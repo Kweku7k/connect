@@ -27,6 +27,7 @@
                     <br/>
 
                     <div class="flexBar"><h6>Id</h6><h6 class="text-muted">{{report.id}}</h6></div>
+                    <div class="flexBar"><h6>SenderId</h6><h6 class="text-muted">{{report.senderId}}</h6></div>
                     <div class="flexBar"><h6>To</h6><h6 class="text-muted">{{report.appId}}</h6></div>
                     <div class="flexBar"><h6>Total Messages</h6><h6 class="text-muted">{{report.contacts}}</h6></div>
                     <div class="flexBar"><h6>Sent</h6><h6 class="text-muted">{{report.sent}}</h6></div>
@@ -36,15 +37,31 @@
                     <div class="flexBar"><h6>Time</h6><h6 class="text-muted">{{report.date.strftime("%H : %M")}}</h6></div>
                     <!-- <h6 style="text-align: center; width: 100%; ">Please confirm that this financial information is up to date.</h6>    -->
 
-
-
                     <br/>
 
 
                 </div>
 
             </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <h4>Message Report</h4>
+                    {% for contact in contacts %}
+                        {% for key, value in contact.items() %}
+                            <div class="flexBar">
+                                <h6>{{key}}</h6>
+                                {% if value == 1 %}
+                                    <div class="statusEllipse-success"></div>
+                                {% else %}
+                                    <div class="statusEllipse-failed"></div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+            </div>
         </div>
+       
     </div>
 
 {% endblock %}
