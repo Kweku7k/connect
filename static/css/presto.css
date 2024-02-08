@@ -317,6 +317,11 @@ box-icon{
     margin-right: 10px;
 }
 
+.disabled{
+    opacity: 0.5;
+    color: gray;
+}
+
 
 .statusEllipse-failed{
     width: 10px; 

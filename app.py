@@ -45,7 +45,7 @@ chat_id = os.environ.get('presto_telegram_bot')
 telegramToken = os.environ.get('telegram_token')
 
 
-def current_user():
+def get_current_user():
     # TODO: Convert class into dictionary
     user_found = session.get('current_user', None)
     if user_found is not None:
@@ -541,13 +541,14 @@ def broadcast():
 def dashboard():
     form=BroadcastForm()
     form.group.choices = [ f"{group.name} - {group.total} contacts" for group in Groups.query.all()]
+    current_user = get_current_user()
     data = {
-       "name":current_user().username,
+       "name":current_user.username,
        "smsbalance":0,
-       "balance":current_user().total,
-       "contacts":Contacts.query.count(),
-       "groups":Groups.query.count(),
-       "reports":Report.query.count()
+       "balance":current_user.total,
+       "contacts":Contacts.query.filter_by(appId=current_user.appId).count(),
+       "groups":Groups.query.filter_by(appId=current_user.appId).count(),
+       "reports":Report.query.filter_by(appId=current_user.appId).count()
     }
 
     if request.method == 'POST':
@@ -575,14 +576,15 @@ def dashboard():
             if response is not None:
                 flash(f'Messages were sent succesfully.')
                 return redirect('dashboard')
-    return render_template('dashboard.html', data=data, form=form, user=current_user())
+    return render_template('dashboard.html', current_user=current_user ,data=data, form=form, user=get_current_user())
 
 @app.route('/contacts', methods=['GET', 'POST'])
 @app.route('/contacts/<int:slug>', methods=['GET', 'POST'])
 def contacts(slug = None):
+    current_user = get_current_user()
     if slug:
-        contactlist = Contacts.query.filter_by(groupId=slug).all()
-        count = Contacts.query.filter_by(groupId=slug).count()
+        contactlist = Contacts.query.filter_by(groupId=slug, appId=current_user.appId).all()
+        count = Contacts.query.filter_by(groupId=slug,  appId=current_user.appId).count()
         group = Groups.query.get_or_404(slug)
 
         try:
@@ -592,11 +594,11 @@ def contacts(slug = None):
             reportError(e)
 
     else:
-        contactlist = Contacts.query.all()
-        count = Contacts.query.count()
+        contactlist = Contacts.query.filter_by(appId=current_user.appId).all()
+        count = Contacts.query.filter_by(appId=current_user.appId).count()
         group = None
     
-    return render_template('contacts.html', contactlist=contactlist, count=count, group=group, loadingMessage="Please wait while we process your request, this may take some time." )
+    return render_template('contacts.html', current_user=current_user, contactlist=contactlist, count=count, group=group, loadingMessage="Please wait while we process your request, this may take some time." )
 
 @app.route('/issue', methods=['GET', 'POST'])
 def issue():
@@ -616,21 +618,12 @@ def getGroups(appId):
 
 @app.route('/groups', methods=['GET', 'POST'])
 def groups():   
-    data = {
-        "count":12
-    }
+    current_user = get_current_user()
 
-    grouplist = Groups.query.all()
+    grouplist = Groups.query.filter_by(appId=current_user.appId).all()
 
-    navdata = {
-        "backUrl":'dashboard',
-        "title":'Groups',
-        "support":f'{data["count"]} groups',
-        "icon":'group',
-        "iconurl":'adduser'
-    }
-
-    return render_template('groups.html', data=data, grouplist=grouplist)
+    groupCount = len(grouplist)
+    return render_template('groups.html', current_user=current_user,groupCount=groupCount ,grouplist=grouplist)
 
 @app.route('/adduser', methods=['GET', 'POST'])
 def adduser():
@@ -642,7 +635,7 @@ def adduser():
 def pay(id):
     print("purchasing package id.")
     package = Package.query.get_or_404(id)
-    user = current_user
+    user = get_current_user
     
     body={
         "userId":1,
@@ -880,8 +873,11 @@ def createReport(reportBody, rawdata):
 
 @app.route('/reports', methods=['GET', 'POST'])
 def reports():
-    reports = Report.query.order_by(Report.id.desc()).all()
-    return render_template('reports.html', reports=reports, count = Report.query.count())
+    current_user = get_current_user()
+
+    reports = Report.query.filter_by(appId=current_user.appId).order_by(Report.id.desc()).all()
+    reportCount = len(reports)
+    return render_template('reports.html', current_user=current_user,reports=reports, count = reportCount)
 
 @app.route('/report/<int:id>', methods=['GET', 'POST'])
 def report(id):
