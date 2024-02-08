@@ -21,8 +21,9 @@ app=Flask(__name__)
 app.config['SECRET_KEY'] = 'c288b2157916b13s523242q3wede00ba242sdqwc676dfde'
 app.config['JWT_SECRET_KEY'] = 'c288b2157916b13s523242q3wede00ba242sdqwc676dfde'
 
+app.config['SQLALCHEMY_DATABASE_URI']= 'postgresql://postgres:adumatta@localhost:5432/connect'
 # app.config['SQLALCHEMY_DATABASE_URI']= 'postgresql://postgres:adumatta@database-1.crebgu8kjb7o.eu-north-1.rds.amazonaws.com:5432/connect'
-app.config['SQLALCHEMY_DATABASE_URI']= os.environ.get('CONNECT_DB_URL', 'postgresql://postgres:adumatta@localhost:5432/connect' )
+# app.config['SQLALCHEMY_DATABASE_URI']= os.environ.get('CONNECT_DB_URL', 'postgresql://postgres:adumatta@localhost:5432/connect' )
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
@@ -88,8 +89,9 @@ def token_required(f):
             session['current_user'] = data['user']
 
         except:
+            print(f'Token is invalid')
             flash(f'Token is invalid')
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('login'))
 
         
         return f(*args, **kwargs)
@@ -161,6 +163,8 @@ class Report(db.Model):
     credit = db.Column(db.Integer)
     contacts = db.Column(db.Integer)
     groupId = db.Column(db.Integer)
+    balanceBefore = db.Column(db.Float)
+    balanceAfter = db.Column(db.Float)
     type = db.Column(db.String)
     providerId = db.Column(db.String)
     rawdata = db.Column(JSON, nullable=True)
@@ -252,7 +256,7 @@ class LedgerEntry(db.Model):
 
 
 
-def reportError(e):
+def reportError(e, message = None):
     print(e)
 
 
@@ -475,9 +479,8 @@ def addPackage():
 
 @app.route('/',methods=['GET','POST'])
 def home():
-    if request.method=='POST':
-        return render_template('index.html')
-    return render_template('index.html')
+    current_user = get_current_user()
+    return render_template('index.html', current_user=current_user)
 
 def getgroup(groupId):
     groups = Contacts.query.filter_by(groupId=groupId).all()
@@ -485,10 +488,16 @@ def getgroup(groupId):
     return groups
 
 @app.route('/broadcast', methods=['GET', 'POST'])
-def broadcast():
+@app.route('/broadcast/<int:groupId>', methods=['GET', 'POST'])
+def broadcast(groupId = None):
+    current_user = get_current_user()
     form = BroadcastForm()
-    form.senderId.choices = ['PrestoHelp']
-    form.group.choices = [ (group.id, f"{group.name} - {group.total} contacts" )for group in Groups.query.all()]
+    form.senderId.choices = ['PRSConnect','CU_CAM_CHCH']
+    print(groupId)
+    if groupId is not None:
+        form.group.choices = [ (group.id, f"{group.name} - {group.total} contacts" )for group in Groups.query.filter_by(id = groupId).all()]
+    else:
+        form.group.choices = [ (group.id, f"{group.name} - {group.total} contacts" )for group in Groups.query.all()]
     if request.method == 'POST':
         if form.validate_on_submit():
             message = form.message.data + f"\n{datetime.datetime.now().strftime('%c')}"+"\nPowered By PrestoConnect"
@@ -499,11 +508,7 @@ def broadcast():
             print(senderId)
 
             group = getgroup(groupId)
-
             groupData = Groups.query.get_or_404(groupId)
-
-            # check for either groupId or contact array
-
 
             if group is not None:
                 contacts = [contacts.phoneNumber for contacts in group]
@@ -518,10 +523,15 @@ def broadcast():
 
             response = sendMnotifySms(senderId, contacts, message)
 
+            print("response!")
+            pprint.pprint(response)
             response["presto_summary_data"] = {
                 "message":message,
                 "groupName":groupData.name,
-                "groupId":groupData.id
+                "groupId":groupData.id,
+                "appId":current_user.appId,
+                "balance":current_user.appId,
+                "senderId":senderId
             }
 
             rawdata = {
@@ -532,20 +542,21 @@ def broadcast():
             createReport(response,rawdata)
 
             if response is not None:
-                flash(f'Messages were sent succesfully.')
-                return redirect('dashboard')
+                flash(f'{response["summary"]["total_sent"]} Messages were sent succesfully. Please check your reports')
+                return redirect(url_for('dashboard'))
     return render_template('broadcast.html', form=form)
 
 @app.route('/dashboard', methods=['GET', 'POST'])
 @token_required
 def dashboard():
-    form=BroadcastForm()
-    form.group.choices = [ f"{group.name} - {group.total} contacts" for group in Groups.query.all()]
     current_user = get_current_user()
+    form=BroadcastForm()
+    form.group.choices = [ f"{group.name} - {group.total} contacts" for group in Groups.query.filter_by(appId=current_user.appId).all()]+[(None,'--None--')]
     data = {
        "name":current_user.username,
        "smsbalance":0,
-       "balance":current_user.total,
+       "senderIds":0,
+       "balance":current_user.balance,
        "contacts":Contacts.query.filter_by(appId=current_user.appId).count(),
        "groups":Groups.query.filter_by(appId=current_user.appId).count(),
        "reports":Report.query.filter_by(appId=current_user.appId).count()
@@ -580,11 +591,12 @@ def dashboard():
 
 @app.route('/contacts', methods=['GET', 'POST'])
 @app.route('/contacts/<int:slug>', methods=['GET', 'POST'])
+@token_required
 def contacts(slug = None):
     current_user = get_current_user()
     if slug:
         contactlist = Contacts.query.filter_by(groupId=slug, appId=current_user.appId).all()
-        count = Contacts.query.filter_by(groupId=slug,  appId=current_user.appId).count()
+        count = Contacts.query.filter_by(groupId=slug, appId=current_user.appId).count()
         group = Groups.query.get_or_404(slug)
 
         try:
@@ -697,7 +709,9 @@ def updateGroup(id):
 
 
 @app.route('/upload_file', methods=['GET', 'POST'])
+@token_required
 def upload_file():
+    current_user = get_current_user()
     if request.method == 'POST':
         print('POST REQUEST')
         
@@ -710,7 +724,8 @@ def upload_file():
 
         name = request.form.get('name','default')
         slug = request.form.get('slug','default')
-        appId = request.form.get('appId','default')
+        # appId = request.form.get('appId','default')
+        appId = current_user.appId
 
         print("name:",name, "slug:",slug)
 
@@ -720,6 +735,9 @@ def upload_file():
             newgroup = Groups(name = name, appId=appId, slug=slug, total=total )
             db.session.add(newgroup)
             db.session.commit()
+        else:
+            flash(f'Oops, seems there is a group with this slug. Please provide a different identifier.')
+            return redirect(url_for('groups'))
 
         # If the user does not select a file, browser submits an empty file without a filename
         # if file.filename == '':
@@ -740,7 +758,7 @@ def upload_file():
                     print(row)
                     # check if phone number already exists
                     # findExistingPhoneNumber()
-                    newcontact = Contacts(name=row[1], phoneNumber=row[2], appId=request.form.get('appId', 'default'), slug=slug, groupId=newgroup.id)
+                    newcontact = Contacts(name=row[1], phoneNumber=row[2], appId=appId, slug=slug, groupId=newgroup.id)
                     try:
                         db.session.add(newcontact)
                     except Exception as e:
@@ -855,14 +873,33 @@ def createReport(reportBody, rawdata):
     summaryReport = reportBody['summary']
     prestoSummaryReport = reportBody['presto_summary_data']
 
+
     try:
-        newReport = Report(rawdata=rawdata, responsedata=reportBody,status=reportBody.get('status', None), appId=reportBody.get('appId', 'default'), contacts=summaryReport.get('contacts', 'default'), sent=summaryReport.get('total_sent', None), rejected=summaryReport.get('total_rejected', None), credit=summaryReport.get('credit_used', None), type=summaryReport.get('type', None), providerId=summaryReport.get('_id', None), message=prestoSummaryReport.get('message', None),  groupName=prestoSummaryReport.get('groupName', None),  groupId=prestoSummaryReport.get('groupId', None), )
+
+        prestoSummaryReport.get('balance') - prestoSummaryReport.get('credit')
+
+        newReport = Report(rawdata=rawdata, responsedata=reportBody,status=reportBody.get('status', None), appId=prestoSummaryReport.get('appId', 'default'), contacts=summaryReport.get('contacts', 'default'), sent=summaryReport.get('total_sent', None), rejected=summaryReport.get('total_rejected', None), credit=summaryReport.get('credit_used', None), type=summaryReport.get('type', None), providerId=summaryReport.get('_id', None), message=prestoSummaryReport.get('message', None),  groupName=prestoSummaryReport.get('groupName', None),  groupId=prestoSummaryReport.get('groupId', None), balanceBefore = prestoSummaryReport.get('balance', None), senderId=prestoSummaryReport.get('senderId', None) )
         db.session.add(newReport)
         db.session.commit()
+
+        # newReport.balanceAfter = newReport.balanceBefore - newReport.credit
+        # db.session.commit()
     except Exception as e:
         reportError(e)
 
-    print(newReport)
+
+    try:
+        user = User.query.get_or_404(get_current_user().id)
+
+        if user is not None:
+            user.balance -= newReport.credit
+            user.total += newReport.credit
+            db.session.commit() 
+
+    except Exception as e:
+        reportError(e, 'Couldnt update user balance')
+
+    # print(newReport)
 
     # newReport = Report(/)
     # take the json
@@ -881,6 +918,8 @@ def reports():
 
 @app.route('/report/<int:id>', methods=['GET', 'POST'])
 def report(id):
+    current_user = get_current_user()
+
     report = Report.query.get_or_404(id)
 
     print("RAW DATA")
@@ -903,19 +942,34 @@ def report(id):
             contacts.append({c:0})
 
     print(contacts)
-    return render_template('report.html', report=report, contacts=contacts)
+    return render_template('report.html', report=report, contacts=contacts, current_user=current_user)
 
 @app.route('/new', methods=['GET', 'POST'])
-def new():
+@app.route('/new/<int:groupId>', methods=['GET', 'POST'])
+@token_required
+def new(groupId=None):
+    current_user = get_current_user()
+    print("user: ")
+
+    # if group.appId != current_user.appId:
+    #     flash(f'You are not authorized to perform that action')
+    #     return redirect('logout')
+
     form = AddUserForm()
-    form.group.choices = [ (group.id, f"{group.name} - {group.total} contacts" )for group in Groups.query.all()]
+
+    if groupId is not None:
+        form.group.choices = [ (group.id, f"{group.name} - {group.total} contacts" )for group in Groups.query.filter_by(id = groupId).all()]
+    else:
+        form.group.choices = [ (group.id, f"{group.name} - {group.total} contacts" )for group in Groups.query.all()]
+    
     if request.method == 'POST':
+        print(form.data)
         if form.validate_on_submit():
             try:
-                newContact = Contacts(name=form.name.data, phoneNumber=form.phone.data, appId="appId", slug="slug", groupId = form.group.data )
+                newContact = Contacts(name=form.name.data, phoneNumber=form.phone.data, appId=current_user.appId, slug="slug", groupId = form.group.data )
                 db.session.add(newContact)
                 db.session.commit()
-                flash(f'Your data has been uplaoded successfully')
+                flash(f'New Contact: {newContact.name} has been added to this group!')
                 return redirect(url_for('contacts', slug=form.group.data))
             
             except Exception as e:
@@ -923,7 +977,7 @@ def new():
         else:
             print(form.errors)
 
-    return render_template('addcontact.html', form=form)
+    return render_template('addcontact.html', form=form, current_user=current_user)
 
 
 @app.route('/confirm/<string:transactionId>', methods=['GET', 'POST'])
@@ -966,7 +1020,7 @@ def confirm(transactionId):
                     message = "Student Name:"+ str(transaction.username) + "\nHostel Name: "+transaction.listing + "\nAmount:" + str(transaction.amount) + "\nPayment Method:"+transaction.channel + "\nPayment  Date" + transaction.date_created.strftime("%Y-%m-%d %H:%M:%S") + "\nReceipt Number: PRS" + str(transaction.id) + "REF" + str(transaction.ref) +"\nYour payment has been received successfully!."
 
                     print("send_sms || PrestoStay)")
-                    sendMnotifySms("PrestoHelp",transaction.account, message)
+                    sendMnotifySms("PRSConnect",transaction.account, message)
 
                     print(responseMessage)
                     sendTelegram(responseMessage)
@@ -1006,7 +1060,7 @@ def broadcast_api():
     pprint.pprint(body)
 
     message = body.get('message') + f"\n{datetime.datetime.now().strftime('%c')}"+"\nPowered By PrestoConnect"
-    senderId = body.get('senderId', 'PrestoHelp')
+    senderId = body.get('senderId', 'PRSConnect')
     contacts = body.get('contacts', None)
     # array of contacts
 
@@ -1045,7 +1099,7 @@ def onboard():
             db.session.add(newuser)
             db.session.commit()
             message =  "Congratulations on successfully being onboarded to Presto Connect.\nYou have recieved 100 free sms credits.\n\nIf you need any form of support you can call +233545977791 "
-            sendMnotifySms('PrestoHelp', newuser.phone, message)
+            sendMnotifySms('PRSConnect', newuser.phone, message)
             sendTelegram(newuser.phone, newuser.username +" : " + newuser.phone + " has onboarded to PrestoPay. \nhttps://stay.prestoghana.com/profile/ \nYour username is "+ newuser.username+ "\nIf you need any form of support you can call +233545977791 ")
             token = login_user(newuser) 
 
