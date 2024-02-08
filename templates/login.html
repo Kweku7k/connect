@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+
+{% block head %}
+
+{% endblock %}
+{% block body %}
+
+<div class="container">
+    <div class="row" style="justify-content: space-around; margin-top: 5vh;">
+        <div class="col-md-6">
+            <div class="defaultCard">
+                <form action="" method="post">
+                    
+                    {{form.hidden_tag()}}
+
+                <div class="ellipse" style="border: none; border-radius: 50%; overflow: hidden; margin: auto; background-color: rgb(48, 44, 255); border-radius:rgb(48, 44, 255);">
+                    <img src="{{url_for("static", filename="img/memoji.png")}}" style="width: 100%;" alt="" srcset="">
+                 <!-- <link rel="stylesheet" href="{{url_for("static", filename="css/style.css")}}"> -->
+                </div>
+
+                <h1 class="heading" style="text-align: center; margin-top: 5vh;">Login Page</h1>
+                <h6 style="text-align: center; width: 100%; ">
+                    Welcome back to your dashboard. If you are an admin and have access to this portal please put in your email and a password.
+                </h6>  
+                
+                <div class="inputTextHolder">
+                    <h6>{{form.email.label}}</h6>
+                    {{form.email (class="inputTextCard", placeholder="Please enter your email number")}}
+                    {% for error in form.email.errors %}
+                    <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+                    {% endfor %}
+                </div>
+                
+                <div class="inputTextHolder">
+                    <h6>{{form.password.label}}</h6>
+                    {{form.password (class="inputTextCard", placeholder="Please enter your password number")}}
+                    {% for error in form.password.errors %}
+                    <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+                    {% endfor %}
+                </div>
+
+                    {{form.submit(class="pill-button", style="width: 100%; margin-top:5vh;", onclick="showLoadingScreen()")}}
+                </form>
+
+
+
+            </div>
+        </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

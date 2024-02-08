@@ -30,3 +30,15 @@ class TakePayment(FlaskForm):
     # recommendation = BooleanField('Would you recommend Central University to a potential applicant')
     submit = SubmitField('Pay')
 
+class LoginForm(FlaskForm):
+    email = StringField('Email', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[DataRequired()])
+    submit = SubmitField('Submit')
+
+class RegisterForm(FlaskForm):
+    username = StringField('Name', validators=[DataRequired()])
+    phone = StringField('Phone', validators=[DataRequired(), Length(min=10, max=13, message="Your phone number should be more than 10 digits and less than 15")])
+    email = StringField('Email', validators=[DataRequired()])
+    password = PasswordField('Password', validators=[Length(min=6)])
+    confirm_password = PasswordField('Confirm Password', validators=[EqualTo('password', message='Your passwords dont match, please try again')])
+    submit = SubmitField('Update')

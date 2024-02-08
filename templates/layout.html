@@ -44,9 +44,25 @@
       <!-- <div class="container"> -->
         <nav style="margin: auto 3vh;" class="navbar navbar-expand-lg navbar-light bg-transparent flexBar">
           <a class="navbar-brand" href="/">
-            <!-- <img src="./img/logo (1).png" width="50" alt="ikolilu"> -->
             <h4 style="font-weight: 900; color: #302cff;">PrestoConnect</h4>
           </a>
+
+          {% if user %}
+          <!-- <h6>{{user.username}}</h6> -->
+          <a href="{{url_for('dashboard')}}" style="text-decoration: none;">
+            <div style="display: flex; align-items: center;">
+              <div class="ellipse" style="width: 50px; height: 50px; background-color: white; border-radius: 50%; border: 2px solid #302cff;">
+              <!-- <h1 style="color: #302cff; font-weight: 800;">P</h1> -->
+              <img class="profileImage" src="{{url_for('static', filename='img/placeholder.png')}}" alt="">
+              <!-- <img class="profileImage" src="https://firebasestorage.googleapis.com/v0/b/ineruu-142dc.appspot.com/o/ineruu-142dc-default-rtdb%2FImages%2F030E7704-3D36-4D94-93B5-B9A240ABB8A7.png.jpg?alt=media&token=39e9852d-dedc-4b6f-80da-8136d6ab85f7" alt=""> -->
+            </div>
+              <div style="margin-left: 10px;">
+                <h6 style="margin-bottom: 0; color: black;">{{user.username}}</h6>
+                <h6 style="margin-bottom: 0; color: blue; font-weight: bold;">Ghc{{user.total}}</h6>
+              </div>
+            </div>
+          </a>
+          {% endif %}
 
         </nav>
         <hr style="width: 95%; margin: auto;">

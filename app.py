@@ -3,27 +3,35 @@ import csv
 import datetime
 import os
 import pprint
-from flask import Flask, flash,redirect,url_for,render_template,request
+from flask import Flask, flash, jsonify,redirect,url_for,render_template,request, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import requests
 from sqlalchemy.dialects.postgresql import JSON
+from flask_bcrypt import Bcrypt
+
+
+from functools import wraps
+import jwt
 
 from forms import *
 # from flask_login import UserMixin, login_user, logout_user, current_user, LoginManager, login_required
 
 app=Flask(__name__)
 app.config['SECRET_KEY'] = 'c288b2157916b13s523242q3wede00ba242sdqwc676dfde'
-app.config['SQLALCHEMY_DATABASE_URI']= 'postgresql://postgres:adumatta@database-1.crebgu8kjb7o.eu-north-1.rds.amazonaws.com:5432/connect'
+app.config['JWT_SECRET_KEY'] = 'c288b2157916b13s523242q3wede00ba242sdqwc676dfde'
+
+# app.config['SQLALCHEMY_DATABASE_URI']= 'postgresql://postgres:adumatta@database-1.crebgu8kjb7o.eu-north-1.rds.amazonaws.com:5432/connect'
+app.config['SQLALCHEMY_DATABASE_URI']= os.environ.get('CONNECT_DB_URL', 'postgresql://postgres:adumatta@localhost:5432/connect' )
 
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
+bcrypt = Bcrypt(app)
 
-current_user = {
-    'id':1,
-    'username':'Kweku', 
-    'appId':'PrestoSolutions'
-}
+
+algorithms = ["HS256"]
+
+
 
 baseUrl = os.environ.get('CONNECT_BASE_URL', 'sandbox.prestoghana.com')
 prestoUrl = os.environ.get('PRESTO_URL', 'sandbox.prestoghana.com')
@@ -35,6 +43,60 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 chat_id = os.environ.get('presto_telegram_bot')
 telegramToken = os.environ.get('telegram_token')
+
+
+def current_user():
+    # TODO: Convert class into dictionary
+    user_found = session.get('current_user', None)
+    if user_found is not None:
+        user = User.query.get_or_404(user_found)
+        if user is not None:
+            return user
+    return None
+     
+
+def login_user(user):
+    print("Logging in :")
+    print(user)
+    token = jwt.encode({'user':user.id, 'exp':datetime.datetime.now()+datetime.timedelta(minutes=30)}, app.config['SECRET_KEY'])
+    session['jwt']=token
+    session['current_user'] = user.id
+    return token
+
+def user_loader(user_id):
+    return User.query.get_or_404(user_id)
+
+def logout_user():
+    print('Logging out user!')
+    session.pop('jwt')
+    session.pop('current_user')
+
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # token = session.get('token') #https://
+        token = session.get('jwt') #https://
+        print(token)
+
+        if not token:
+            return redirect(url_for('login'))
+
+        try:
+            data = jwt.decode(token, app.config['SECRET_KEY'],algorithms=algorithms)
+            print("-----jwt-----")
+            print(data)
+            session['current_user'] = data['user']
+
+        except:
+            flash(f'Token is invalid')
+            return redirect(url_for('dashboard'))
+
+        
+        return f(*args, **kwargs)
+
+    return decorated
+
+
 
 # ------ MODELS
 
@@ -57,9 +119,13 @@ class User(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String)
+    email = db.Column(db.String)
+    phone = db.Column(db.String)
+    password = db.Column(db.String)
     appId = db.Column(db.String)
     slug = db.Column(db.String)
     total = db.Column(db.Integer, default=0)
+    balance = db.Column(db.Float, default=0)
     added = db.Column(db.DateTime, default=datetime.datetime.utcnow())
 
     def __repr__(self):
@@ -348,6 +414,39 @@ def sendTelegram(message_text, chat_id=chat_id):
         reportError(e)
         return e
 
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    form=LoginForm()   
+
+    if request.method == 'POST':
+        print(form.data)
+
+        user = User.query.filter_by(email = form.email.data).first()
+        print("user found :")
+        print(user)
+
+        if user and bcrypt.check_password_hash(user.password, form.password.data):
+            print(user)
+
+            jwt_token = login_user(user)
+            print(jwt_token)
+
+            return redirect(url_for('dashboard'))
+        
+        else:
+            flash(f'These credentials are not valid')
+
+    return render_template('login.html', form=form)
+
+
+@app.route('/logout', methods=['GET', 'POST'])
+def logout():
+    logout_user()
+    flash(f'Successfully logged you out.')
+    return redirect(url_for('home'))
+
+
 @app.route('/addpackage', methods=['GET','POST'])
 def addPackage():
     print("request")
@@ -438,13 +537,14 @@ def broadcast():
     return render_template('broadcast.html', form=form)
 
 @app.route('/dashboard', methods=['GET', 'POST'])
+@token_required
 def dashboard():
     form=BroadcastForm()
     form.group.choices = [ f"{group.name} - {group.total} contacts" for group in Groups.query.all()]
     data = {
-       "name":"laspag24",
+       "name":current_user().username,
        "smsbalance":0,
-       "balance":0,
+       "balance":current_user().total,
        "contacts":Contacts.query.count(),
        "groups":Groups.query.count(),
        "reports":Report.query.count()
@@ -475,7 +575,7 @@ def dashboard():
             if response is not None:
                 flash(f'Messages were sent succesfully.')
                 return redirect('dashboard')
-    return render_template('dashboard.html', data=data, form=form)
+    return render_template('dashboard.html', data=data, form=form, user=current_user())
 
 @app.route('/contacts', methods=['GET', 'POST'])
 @app.route('/contacts/<int:slug>', methods=['GET', 'POST'])
@@ -937,6 +1037,38 @@ def broadcast_api():
     createReport(response, body)
 
     return response
+
+@app.route('/onboard', methods=['GET', 'POST'])
+def onboard():
+    form = RegisterForm()
+    if form.validate_on_submit():
+        hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
+        newuser = User(username=form.username.data, email=form.email.data, phone=form.phone.data, password=hashed_password, balance=100, total=100)
+        print(newuser)
+        try:
+            db.session.add(newuser)
+            db.session.commit()
+            message =  "Congratulations on successfully being onboarded to Presto Connect.\nYou have recieved 100 free sms credits.\n\nIf you need any form of support you can call +233545977791 "
+            sendMnotifySms('PrestoHelp', newuser.phone, message)
+            sendTelegram(newuser.phone, newuser.username +" : " + newuser.phone + " has onboarded to PrestoPay. \nhttps://stay.prestoghana.com/profile/ \nYour username is "+ newuser.username+ "\nIf you need any form of support you can call +233545977791 ")
+            token = login_user(newuser) 
+
+            if token is not None:
+                return redirect(url_for('dashboard'))
+            else:
+                flash(f'Logging in to your account has failed. Please try logging in again.')
+                return redirect(url_for('login'))
+
+        except Exception as e:
+            print(e)
+            print("User was not able to be created")
+        print("Registered new user: " + newuser.username + " " + newuser.email)
+                
+
+    else:
+        print(form.errors)
+
+    return render_template('onboard.html', form=form)
 
 if __name__ == '__main__':
     app.run(port=5000,host='0.0.0.0',debug=True)
