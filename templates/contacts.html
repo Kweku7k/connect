@@ -38,15 +38,14 @@
 
     {% for contact in contactlist %}
     <div class="col-md-4">
+      <a href="{{url_for('updateContact', id=contact.id)}}">
         <div class="card flexBar">
-          <div class="profile">
+            <div class="profile">
               <h6>{{contact.name}}</h6>
               <h6 class="text-muted">{{contact.phoneNumber}}</h6>
+            </div>
           </div>
-          <!-- <div>
-            <i class="fa fa-trash" aria-hidden="true"></i>
-          </div> -->
-        </div>
+        </a>
 
     </div>
 

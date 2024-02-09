@@ -37,6 +37,7 @@ class LoginForm(FlaskForm):
 
 class RegisterForm(FlaskForm):
     username = StringField('Name', validators=[DataRequired()])
+    appId = StringField('appId', validators=[DataRequired()])
     phone = StringField('Phone', validators=[DataRequired(), Length(min=10, max=13, message="Your phone number should be more than 10 digits and less than 15")])
     email = StringField('Email', validators=[DataRequired()])
     password = PasswordField('Password', validators=[Length(min=6)])

@@ -27,8 +27,8 @@
         <div class="col-md-6 col-6">
             <a href="{{url_for('purchase')}}">
                 <div data-aos="fade-up" class="card">
-                    <h6>Balance</h6>
-                    <h2 style="font-weight: 700;">GHS{{data.balance}}</h2>
+                    <h6>Credits</h6>
+                    <h2 style="font-weight: 700;">{{data.balance}}</h2>
                     <!-- <h6 class="text-muted">{{data.smsbalance}} SMS Left</h6> -->
                 </div>
             </a>
@@ -69,7 +69,6 @@
                 <div data-aos="fade-up" data-aos-delay="100" class="card">
                     <h6>Reports</h6>
                     <h2 style="font-weight: 700;">{{data.reports}}</h2>
-                    <!-- <h6><u>View/ all</u></h6> -->
                 </div>
             </a>
         </div>

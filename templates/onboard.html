@@ -27,6 +27,14 @@
                 </div>
 
                 <div class="inputTextHolder">
+                    <h6>{{form.appId.label}}</h6>
+                    {{form.appId (class="inputTextCard", placeholder="Please enter your appId number")}}
+                    {% for error in form.appId.errors %}
+                    <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+                    {% endfor %}
+                </div>
+
+                <div class="inputTextHolder">
                     <h6>{{form.email.label}}</h6>
                     {{form.email (class="inputTextCard", placeholder="Please enter your email number")}}
                     {% for error in form.email.errors %}

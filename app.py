@@ -116,6 +116,25 @@ class Groups(db.Model):
         return f"Group('id: {self.id}', 'total:{self.total}', 'slug:{self.slug}')"
 
 
+class SenderId(db.Model):
+    tablename = ['Groups']
+
+    id = db.Column(db.Integer, primary_key=True)
+    senderId = db.Column(db.String)
+    appId = db.Column(db.String)
+    slug = db.Column(db.String)
+    total = db.Column(db.Integer, default=0)
+    approved = db.Column(db.Boolean, default=True)
+    added = db.Column(db.DateTime, default=datetime.datetime.utcnow())
+    date_approved = db.Column(db.DateTime)
+
+
+    def __repr__(self):
+        return f"Sender('id: {self.senderId}', 'AppId:{self.appId}')"
+
+
+
+
 class User(db.Model):
     tablename = ['User']
 
@@ -492,7 +511,7 @@ def getgroup(groupId):
 def broadcast(groupId = None):
     current_user = get_current_user()
     form = BroadcastForm()
-    form.senderId.choices = ['PRSConnect','CU_CAM_CHCH']
+    form.senderId.choices = [ group.senderId for group in SenderId.query.filter_by(appId=current_user.appId).all()]
     print(groupId)
     if groupId is not None:
         form.group.choices = [ (group.id, f"{group.name} - {group.total} contacts" )for group in Groups.query.filter_by(id = groupId).all()]
@@ -530,7 +549,7 @@ def broadcast(groupId = None):
                 "groupName":groupData.name,
                 "groupId":groupData.id,
                 "appId":current_user.appId,
-                "balance":current_user.appId,
+                "balance":current_user.balance,
                 "senderId":senderId
             }
 
@@ -544,7 +563,7 @@ def broadcast(groupId = None):
             if response is not None:
                 flash(f'{response["summary"]["total_sent"]} Messages were sent succesfully. Please check your reports')
                 return redirect(url_for('dashboard'))
-    return render_template('broadcast.html', form=form)
+    return render_template('broadcast.html', form=form, current_user=current_user)
 
 @app.route('/dashboard', methods=['GET', 'POST'])
 @token_required
@@ -758,7 +777,7 @@ def upload_file():
                     print(row)
                     # check if phone number already exists
                     # findExistingPhoneNumber()
-                    newcontact = Contacts(name=row[1], phoneNumber=row[2], appId=appId, slug=slug, groupId=newgroup.id)
+                    newcontact = Contacts(name=row[0], phoneNumber=row[1], appId=appId, slug=slug, groupId=newgroup.id)
                     try:
                         db.session.add(newcontact)
                     except Exception as e:
@@ -837,6 +856,9 @@ def group(groupId):
         
         return render_template('group.html', contacts=contacts)
 
+@app.route('/delete/<int:id>', methods=['POST'])
+def delete_contact(id):
+    return redirect('contacts', )
 
 @app.route('/deleteGroup/<int:id>', methods=['GET', 'POST'])
 def deleteGroup(id):
@@ -873,12 +895,15 @@ def createReport(reportBody, rawdata):
     summaryReport = reportBody['summary']
     prestoSummaryReport = reportBody['presto_summary_data']
 
+    print("PRSREPORT!")
+    pprint.pprint(prestoSummaryReport)
+
 
     try:
 
-        prestoSummaryReport.get('balance') - prestoSummaryReport.get('credit')
+        balanceAfter = prestoSummaryReport.get('balance') - summaryReport.get('credit_used', None)
 
-        newReport = Report(rawdata=rawdata, responsedata=reportBody,status=reportBody.get('status', None), appId=prestoSummaryReport.get('appId', 'default'), contacts=summaryReport.get('contacts', 'default'), sent=summaryReport.get('total_sent', None), rejected=summaryReport.get('total_rejected', None), credit=summaryReport.get('credit_used', None), type=summaryReport.get('type', None), providerId=summaryReport.get('_id', None), message=prestoSummaryReport.get('message', None),  groupName=prestoSummaryReport.get('groupName', None),  groupId=prestoSummaryReport.get('groupId', None), balanceBefore = prestoSummaryReport.get('balance', None), senderId=prestoSummaryReport.get('senderId', None) )
+        newReport = Report(rawdata=rawdata, responsedata=reportBody,status=reportBody.get('status', None), appId=prestoSummaryReport.get('appId', 'default'), contacts=summaryReport.get('contacts', 'default'), sent=summaryReport.get('total_sent', None), rejected=summaryReport.get('total_rejected', None), credit=summaryReport.get('credit_used', None), type=summaryReport.get('type', None), providerId=summaryReport.get('_id', None), message=prestoSummaryReport.get('message', None),  groupName=prestoSummaryReport.get('groupName', None),  groupId=prestoSummaryReport.get('groupId', None), balanceBefore = prestoSummaryReport.get('balance', None), senderId=prestoSummaryReport.get('senderId', None), balanceAfter=balanceAfter )
         db.session.add(newReport)
         db.session.commit()
 
@@ -943,6 +968,36 @@ def report(id):
 
     print(contacts)
     return render_template('report.html', report=report, contacts=contacts, current_user=current_user)
+
+
+@app.route('/update/<int:id>', methods=['GET', 'POST'])
+def updateContact(id):
+    current_user = get_current_user()
+    form = AddUserForm()
+    user = Contacts.query.get_or_404(id)
+    print(user)
+    print(user.groupId)
+    group = Groups.query.get_or_404(user.groupId)
+    print(group)
+    if request.method == 'GET':
+        form.group.choices = [ (group.id, f"{group.name} - {group.total} contacts" )for group in Groups.query.filter_by(id = group.id).all()]
+        form.name.data = user.name
+        form.phone.data = user.phoneNumber
+        form.group.data = group.name
+
+    elif request.method == 'POST':
+        user.name = form.name.data
+        user.phoneNumber = form.phone.data
+
+        try:
+            db.session.commit()
+            flash(f'{user.name} has been updated!')
+            return redirect(url_for('contacts', slug=group.id))
+        except Exception as e:
+            reportError(e, "Couldnt update contact")
+
+    return render_template('addcontact.html', form=form, current_user=current_user)
+
 
 @app.route('/new', methods=['GET', 'POST'])
 @app.route('/new/<int:groupId>', methods=['GET', 'POST'])
@@ -1092,8 +1147,10 @@ def broadcast_api():
 def onboard():
     form = RegisterForm()
     if form.validate_on_submit():
+
+        
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-        newuser = User(username=form.username.data, email=form.email.data, phone=form.phone.data, password=hashed_password, balance=100, total=100)
+        newuser = User(username=form.username.data, email=form.email.data, phone=form.phone.data, password=hashed_password, balance=100, total=100, appId=form.appId.data)
         print(newuser)
         try:
             db.session.add(newuser)
