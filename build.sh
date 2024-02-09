@@ -19,7 +19,7 @@ source $venv_name/bin/activate
 pip3 install -r required.txt
 
 # Install uwsgi
-# pip install uwsgi
+pip install uwsgi
 
 #Restart the forms application
 # sudo systemctl restart forms.service
