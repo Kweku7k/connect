@@ -22,7 +22,7 @@ pip3 install -r required.txt
 # pip install uwsgi
 
 #Restart the forms application
-sudo systemctl restart forms.service
+# sudo systemctl restart forms.service
 
 # Deactivate the virtual environment
 #deactivate
