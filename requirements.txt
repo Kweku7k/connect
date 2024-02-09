@@ -3,5 +3,7 @@ flask_sqlalchemy
 flask_migrate
 requests
 flask_wtf
+flask_bcrypt
+jwt
 psycopg2-binary
 urllib3==1.26.10
