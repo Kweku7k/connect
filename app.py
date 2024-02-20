@@ -1094,7 +1094,7 @@ def confirm(transactionId):
                 if entry != None: #If a vote was created
 
                     responseMessage = transaction.packageId + "\nSuccessfully bought " +str(transaction.amount) + " for " + str(transaction.username) + "." + "\nBefore: " + str(transaction.balanceBefore) + "\nAfter: "+ str(transaction.balanceAfter) + "\nTransactionId:" + str(transaction.id) + str(transaction.account) + "\nLedgerId: " + str(entry.id)
-                    message = f"Hello {user.username} you have successfully bought {transaction.credits} credits. Your new account balance is {user.balance}."
+                    message = f"Hello {user.username} you have successfully bought {transaction.credits} credits. Your new account balance is {user.credits}."
 
                     # TODO: SEND A MESSAGE WHEN PURCHASE IS SUCCESSFUL?
 
