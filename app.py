@@ -34,10 +34,10 @@ algorithms = ["HS256"]
 
 
 
-baseUrl = os.environ.get('CONNECT_BASE_URL', 'sandbox.prestoghana.com')
-prestoUrl = os.environ.get('PRESTO_URL', 'sandbox.prestoghana.com')
+baseUrl = os.environ.get('CONNECT_BASE_URL', 'https://prestoghana.com')
+prestoUrl = os.environ.get('PRESTO_PROD_URL', 'https://prestoghana.com')
 server = os.environ.get('SERVER', None)
-environment = os.environ.get('ENVIRONEMT', None)
+environment = os.environ.get('ENVIRONEMT', 'DEV')
 
 app.config['UPLOAD_FOLDER'] = 'uploads'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -147,6 +147,7 @@ class User(db.Model):
     slug = db.Column(db.String)
     total = db.Column(db.Integer, default=0)
     balance = db.Column(db.Float, default=0)
+    credits = db.Column(db.Integer, default=0)
     added = db.Column(db.DateTime, default=datetime.datetime.utcnow())
 
     def __repr__(self):
@@ -233,6 +234,7 @@ class Transactions(db.Model):
     userId = db.Column(db.String, nullable=False)
     username = db.Column(db.String)
     packageId = db.Column(db.String)
+    package = db.Column(db.String)
     date_created = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     amount = db.Column(db.Float)
     total = db.Column(db.Float)
@@ -246,6 +248,7 @@ class Transactions(db.Model):
     network = db.Column(db.String)    
     transactionType = db.Column(db.String)
     ledgerEntryId = db.Column(db.Integer)
+    credits = db.Column(db.Integer)
     ref = db.Column(db.String) #notsupersure?
     prestoTransactionId = db.Column(db.Integer)
     channel = db.Column(db.String)
@@ -267,6 +270,8 @@ class LedgerEntry(db.Model):
     balanceAfter = db.Column(db.Float)
     transactionId = db.Column(db.Integer)
     type = db.Column(db.String)
+    package = db.Column(db.String)
+    packageId = db.Column(db.String)
     ref = db.Column(db.String)
     date_created = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
@@ -285,6 +290,8 @@ def createTransaction(body):
         appId=body.get("appId"),
         username=body.get("username"),
         packageId=body.get("packageId"),
+        package=body.get("package"),
+        credits=body.get("credits"),
         amount=body.get("amount"),
         balanceBefore=body.get("balanceBefore"),
         account = body.get("account"),
@@ -308,7 +315,7 @@ def externalPay(transaction):
     print("Triggering External Pay Transaction!")
 
     paymentInfo = {
-        "name":transaction.username,
+        "name":"connect",
         "transactionId":transaction.id,
         "amount":transaction.amount,
         "currency":"GHS",
@@ -323,7 +330,7 @@ def externalPay(transaction):
         print("prestoUrl")
         print(prestoUrl)
         # response = requests.post(prestoUrl+"/externalpay/"+transaction.appId, json=paymentInfo)
-        response = requests.post("https://sandbox.prestoghana.com/externalpay/"+transaction.appId, json=paymentInfo)
+        response = requests.post("https://prestoghana.com/externalpay/connect", json=paymentInfo)
         transaction.ref = response.json()["transactionId"]
     except Exception as e:
         print(e)
@@ -348,7 +355,6 @@ def confirmPrestoPayment(transaction):
     print("--------------status--------------")
     status = r.get("status", "failed")
     print(status)
-
 
     print("--------------server--------------")
     print(server)
@@ -381,13 +387,13 @@ def confirmPrestoPayment(transaction):
         return False
 
 def updateUserBalance(transaction):
- # find vote with same transaction id.
+    # find vote with same transaction id.
     alreadyCounted = LedgerEntry.query.filter_by(transactionId = transaction.id).first()
     if alreadyCounted != None: #If found.
         return None
 
     try: #Create a new vote
-        newLedgerEntry = LedgerEntry(userId=transaction.userId, name=transaction.username, package = transaction.package, amount=transaction.amount, transactionId=transaction.id)
+        newLedgerEntry = LedgerEntry(userId=transaction.userId, name=transaction.username, package = transaction.packageId, amount=transaction.amount, transactionId=transaction.id)
         db.session.add(newLedgerEntry)
         db.session.commit()
     except Exception as e:
@@ -397,19 +403,24 @@ def updateUserBalance(transaction):
 
     try: #SET UP DECIMAL POINTS
         user = User.query.get_or_404(int(transaction.userId))
-        package = Package.query.filter_by(slug = user.listingSlug).first()
+        package = Package.query.get_or_404(transaction.packageId)
         
         transaction.balanceBefore = user.balance
         transaction.balanceAfter = user.balance - newLedgerEntry.amount
-
-        package.amountRecieved += newLedgerEntry.amount
+        # package.count += newLedgerEntry.amount
 
         print("----------------------- Updating balance ---------------------------")
         print("Attempting to update " + user.username + " balance from " + str(transaction.balanceBefore) + " to " + str(transaction.balanceAfter))
         sendTelegram("Attempting to update " + user.username + " balance from " + str(transaction.balanceBefore) + " to " + str(transaction.balanceAfter))
-        
-        user.balance -= newLedgerEntry.amount
-        user.paid += newLedgerEntry.amount
+
+        # user.balance += package.credits
+        # user.paid += newLedgerEntry.amount
+
+        print("---USER IDENTIFICATION--")
+        print(user)
+        print(user.credits)
+        print(transaction.credits)
+        user.credits += transaction.credits
         
         transaction.ledgerEntryId = newLedgerEntry.id
 
@@ -575,7 +586,7 @@ def dashboard():
        "name":current_user.username,
        "smsbalance":0,
        "senderIds":0,
-       "balance":current_user.balance,
+       "balance":current_user.credits,
        "contacts":Contacts.query.filter_by(appId=current_user.appId).count(),
        "groups":Groups.query.filter_by(appId=current_user.appId).count(),
        "reports":Report.query.filter_by(appId=current_user.appId).count()
@@ -637,9 +648,11 @@ def issue():
 
 @app.route('/purchase', methods=['GET', 'POST'])
 def purchase():
+    current_user = get_current_user()
     form = TakePayment()
-    packages = Package.query.all()
-    return render_template('purchase.html', form=form, user=None, loadingMessage="loadingMessage",charges=0.03, packages=packages)
+    packages = Package.query.order_by(Package.price.asc()).all()
+
+    return render_template('purchase.html', form=form, current_user=current_user, loadingMessage="loadingMessage",charges=0.03, packages=packages)
 
 @app.route('/groups/<string:appId>', methods=['GET', 'POST'])
 def getGroups(appId):
@@ -666,16 +679,18 @@ def adduser():
 def pay(id):
     print("purchasing package id.")
     package = Package.query.get_or_404(id)
-    user = get_current_user
-    
+    user = get_current_user()
+    print("---------")
+    print(user)
     body={
-        "userId":1,
-        "appId":user.get("appId"),
-        "username":user.get("username"),
+        "userId":user.id,
+        "appId":user.appId,
+        "username":user.username,
         "amount":package.price,
         "package":package.price,
+        "packageId":package.id,
         "credits":package.credits,
-        "balanceBefore":user.get("balance"),
+        "balanceBefore":user.balance,
         "transactionType":'Default',
         "channel":"WEB"
     }
@@ -725,6 +740,11 @@ def updateGroup(id):
         db.session.commit()
     except Exception as e:
         reportError(e)
+
+def convertToPhoneNumber(phone):
+    phone = phone.replace(' ','')
+    phone = "0"+phone[-9:]
+    return phone
 
 
 @app.route('/upload_file', methods=['GET', 'POST'])
@@ -777,7 +797,8 @@ def upload_file():
                     print(row)
                     # check if phone number already exists
                     # findExistingPhoneNumber()
-                    newcontact = Contacts(name=row[0], phoneNumber=row[1], appId=appId, slug=slug, groupId=newgroup.id)
+                    
+                    newcontact = Contacts(name=row[0], phoneNumber=convertToPhoneNumber(row[1]), appId=appId, slug=slug, groupId=newgroup.id)
                     try:
                         db.session.add(newcontact)
                     except Exception as e:
@@ -1045,6 +1066,7 @@ def confirm(transactionId):
 
         message = "In Progress"
         transaction = Transactions.query.get_or_404(transactionId)
+        user = User.query.get_or_404(transaction.userId)
         print(transaction)
         # SECURE THIS ROUTE
 
@@ -1071,20 +1093,24 @@ def confirm(transactionId):
                 entry = updateUserBalance(transaction)
                 if entry != None: #If a vote was created
 
-                    responseMessage = transaction.listing + "\nSuccessfully bought " +str(transaction.amount) + " for " + str(transaction.username) + "." + "\nBefore: " + str(transaction.balanceBefore) + "\nAfter: "+ str(transaction.balanceAfter) + "\nTransactionId:" + str(transaction.id) + "\nAccount:" + str(transaction.network) + " : "+ str(transaction.account) + "\nLedgerId: " + str(entry.id)
-                    message = "Student Name:"+ str(transaction.username) + "\nHostel Name: "+transaction.listing + "\nAmount:" + str(transaction.amount) + "\nPayment Method:"+transaction.channel + "\nPayment  Date" + transaction.date_created.strftime("%Y-%m-%d %H:%M:%S") + "\nReceipt Number: PRS" + str(transaction.id) + "REF" + str(transaction.ref) +"\nYour payment has been received successfully!."
+                    responseMessage = transaction.packageId + "\nSuccessfully bought " +str(transaction.amount) + " for " + str(transaction.username) + "." + "\nBefore: " + str(transaction.balanceBefore) + "\nAfter: "+ str(transaction.balanceAfter) + "\nTransactionId:" + str(transaction.id) + str(transaction.account) + "\nLedgerId: " + str(entry.id)
+                    message = f"Hello {user.username} you have successfully bought {transaction.credits} credits. Your new account balance is {user.balance}."
+
+                    # TODO: SEND A MESSAGE WHEN PURCHASE IS SUCCESSFUL?
 
                     print("send_sms || PrestoStay)")
                     sendMnotifySms("PRSConnect",transaction.account, message)
 
                     print(responseMessage)
                     sendTelegram(responseMessage)
-                    sendTelegram(responseMessage, listing.chatId)
-                    
-                    emails = [ admin.email for admin in User.query.filter_by(role = 'admin').all()]
-                    print(emails)
 
-                    sendAnEmail(transaction.username, f'GHC {transaction.amount} SUCCESSFULLY RECIEVED', responseMessage, emails)
+                    # sendTelegram(responseMessage, user.chatId)
+                    
+                    # emails = [ admin.email for admin in User.query.filter_by(role = 'admin').all()]
+                    # print(emails)
+
+                    # sendAnEmail(transaction.username, f'GHC {transaction.amount} SUCCESSFULLY RECIEVED', responseMessage, emails)
+
                     flash(f'This transaction was successful! You should recieve and sms.')
                 else:
                     app.logger.error("Transaction: " + str(transaction.id) + " was attempting to be recreated.")

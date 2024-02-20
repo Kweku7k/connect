@@ -6,29 +6,10 @@
 {% block body %}
 
 <div class="container">
-    <div class="row" style="justify-content: space-around; margin-top: 5vh;">
 
-        <!-- <div class="col-md-6"> -->
-                <div class="defaultCard">
-                    <form action="" method="post">
-                        {{form.hidden_tag()}}
-                        <h6>Buy a prepaid package </h6>
-                        
-                        <div class="inputTextHolder">
-                            <h6>{{form.amount.label}}</h6>
-                            {{form.amount (class="inputTextCard", placeholder="Enter your amount.")}}
-                            {% for error in form.amount.errors %}
-                            <h6 style="color: red; font-weight: 100;">{{error}}</h6>
-                            {% endfor %}
-                        </div>
-    
-                    </br>
-                        {{form.submit (class="pill-button", style="width:100%", onclick="showLoadingScreen()")}}
-                    </form>
-                </div>
-    <!-- </div> -->
-    </div>
     <div>
+        <br/>
+
         <h4>Packages</h4>
         <h6 class="text-muted">Buy a package</h6>
 
@@ -37,14 +18,14 @@
         <div class="row">
 
             {% for package in packages %}
+            <div class="col-md-4">
             <a href="{{url_for('pay', id=package.id)}}">
-                <div class="col-md-4">
                     <div class="card">
                         <h6>GHC{{package.price}} </h6>
                         <h6 class="text-muted">{{package.credits}} messages</h6>
                     </div>
-                </div>
-            </a>
+                </a>
+            </div>
             {% endfor %}
 
         </div>
