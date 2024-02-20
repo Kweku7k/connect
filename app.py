@@ -34,7 +34,7 @@ algorithms = ["HS256"]
 
 
 
-baseUrl = os.environ.get('CONNECT_BASE_URL', 'https://prestoghana.com')
+baseUrl = os.environ.get('CONNECT_BASE_URL', 'https://connect.prestoghana.com')
 prestoUrl = os.environ.get('PRESTO_PROD_URL', 'https://prestoghana.com')
 server = os.environ.get('SERVER', None)
 environment = os.environ.get('ENVIRONEMT', 'DEV')
