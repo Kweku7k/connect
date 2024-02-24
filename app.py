@@ -585,7 +585,7 @@ def dashboard():
     data = {
        "name":current_user.username,
        "smsbalance":0,
-       "senderIds":0,
+       "senderIds":SenderId.query.filter_by(appId=current_user.appId).count(),
        "balance":current_user.credits,
        "contacts":Contacts.query.filter_by(appId=current_user.appId).count(),
        "groups":Groups.query.filter_by(appId=current_user.appId).count(),
