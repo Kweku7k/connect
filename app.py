@@ -762,10 +762,11 @@ def upload_file():
             file = request.files['file']
 
         name = request.form.get('name','default')
-        slug = request.form.get('slug','default')
+
         # appId = request.form.get('appId','default')
         appId = current_user.appId
 
+        slug=appId + name.replace(" ","")+datetime.datetime.now().strftime('%c')
         print("name:",name, "slug:",slug)
 
         if Groups.query.filter_by(slug=slug).first() is None:
@@ -938,7 +939,7 @@ def createReport(reportBody, rawdata):
         user = User.query.get_or_404(get_current_user().id)
 
         if user is not None:
-            user.balance -= newReport.credit
+            user.credits -= newReport.credit
             user.total += newReport.credit
             db.session.commit() 
 
@@ -1174,9 +1175,14 @@ def onboard():
     form = RegisterForm()
     if form.validate_on_submit():
 
-        
+        # if User.query.filter_by(email=form.email.data) is not None:
+        #     flash(f'Sorry this email is taken')
+        # elif User.query.filter_by(name=form.name.data) is None:
+        #     flash(f'Sorry this senderId is taken.') 
+
+
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-        newuser = User(username=form.username.data, email=form.email.data, phone=form.phone.data, password=hashed_password, balance=100, total=100, appId=form.appId.data)
+        newuser = User(username=form.username.data, email=form.email.data, phone=form.phone.data, password=hashed_password, balance=100, total=100, credits=100, appId=form.appId.data)
         print(newuser)
         try:
             db.session.add(newuser)
@@ -1184,7 +1190,15 @@ def onboard():
             message =  "Congratulations on successfully being onboarded to Presto Connect.\nYou have recieved 100 free sms credits.\n\nIf you need any form of support you can call +233545977791 "
             sendMnotifySms('PRSConnect', newuser.phone, message)
             sendTelegram(newuser.phone, newuser.username +" : " + newuser.phone + " has onboarded to PrestoPay. \nhttps://stay.prestoghana.com/profile/ \nYour username is "+ newuser.username+ "\nIf you need any form of support you can call +233545977791 ")
-            token = login_user(newuser) 
+            token = login_user(newuser)
+
+            try:
+                newSenderId = SenderId(senderId='PRSConnect', appId=newuser.appId, approved=True)
+                db.session.add(newSenderId)
+                db.session.commit()
+            except Exception as e:
+                reportError(e,'Sender ID assigning to {newuser.username} failed.')
+                 
 
             if token is not None:
                 return redirect(url_for('dashboard'))
@@ -1202,6 +1216,30 @@ def onboard():
         print(form.errors)
 
     return render_template('onboard.html', form=form)
+
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    app.logger.error(error)
+    print("error")
+    print(error)
+
+    error_message = str(error)
+
+      # Check if the error_message contains "500 Internal Server Error" (default Flask message)
+    # if error_message == "500 Internal Server Error":
+        # If it's the default message, try to extract the original exception message
+    original_exception = getattr(error, "original_exception", None)
+    if original_exception:
+        error_message = str(original_exception)
+        print("====================")
+        print(error_message)
+
+        reportTelegram(error_message)
+    
+    return render_template('500.html'), 500
+
+
 
 if __name__ == '__main__':
     app.run(port=5000,host='0.0.0.0',debug=True)
