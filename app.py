@@ -531,9 +531,9 @@ def broadcast(groupId = None):
     if request.method == 'POST':
         if form.validate_on_submit():
 
-            if current_user.credits < 0:
-                flash(f'You dont have enough credits, Please purchase a bundle to continue.')
-                return redirect(url_for('purchase'))
+            # if current_user.credits < 0:
+            #     flash(f'You dont have enough credits, Please purchase a bundle to continue.')
+            #     return redirect(url_for('purchase'))
             
             message = form.message.data + f"\n{datetime.datetime.now().strftime('%c')}"+"\nPowered By PrestoConnect"
             groupId = form.group.data
