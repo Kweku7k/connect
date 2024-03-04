@@ -680,6 +680,10 @@ def adduser():
     return render_template('adduser.html', form=form)
 
 
+@app.route('/recipt', methods=['GET', 'POST'])
+def recipt():
+    return render_template('email/recipt.html')
+
 @app.route('/purchase/<int:id>', methods=['GET','POST'])
 def pay(id):
     print("purchasing package id.")
