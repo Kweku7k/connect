@@ -10,8 +10,10 @@
             <h4>Broadcast A Message</h4>
             <h6 class="text-muted">{{smsbalance}} messages available</h6>
         </div>
-        <button class="pill-button">Add a new contact</button>
+        <!-- <button class="pill-button">Add a new contact</button> -->
     </div>
+
+    <div class="row">
 
     <div class="col-md-8">
                 <div class="defaultCard">
@@ -36,7 +38,7 @@
                         
                         <div class="inputTextHolder">
                             <h6>{{form.message.label}}</h6>
-                            {{form.message (class="inputTextCard", placeholder="Enter your message.")}}
+                            {{form.message (class="inputTextCard", id="inputField", placeholder="Enter your message.", oninput="countCharacters()")}}
                             {% for error in form.message.errors %}
                             <h6 style="color: red; font-weight: 100;">{{error}}</h6>
                             {% endfor %}
@@ -49,6 +51,74 @@
             <!-- </div> -->
         <!-- </div> -->
     </div>
+
+    <div class="col-md-4">
+        <div class="defaultCard">
+
+            <div id="alert" class="ellipse" style="overflow: hidden; margin: auto; width: 100px; height: 100px; justify-content: space-around; align-items: center; ">
+                <box-icon name='check' size="cssSize" color="white" style="width: 50%;"></box-icon>
+            </div>
+
+            <h1 class="heading" style="text-align: center; margin-top: 5vh;">SUFFICIENT</h1>
+
+            <h6  style="text-align: center; width: 100%; "class="text-muted">Projected balance after: </h6>   
+            <h6 style="text-align: center; width: 100%;" id="projectedBalance"><b>{{current_user.credits}}</b></h6>   
+            
+            <br/>
+
+
+
+
+            <br/>
+
+            <div class="flexBar"><h6>Balance Before</h6><h6 class="text-muted">{{current_user.credits}}</h6></div>
+            <div class="flexBar"><h6>Recievers </h6><h6 class="text-muted">{{grouptotal}}</h6></div>
+            <div class="flexBar"><h6>Characters</h6><h6 class="text-muted" id="charCount">0</h6></div>
+            <div class="flexBar"><h6>Credit(s) per message </h6><h6 class="text-muted" id="creditCount">0</h6></div>
+            <div class="flexBar"><h6>Total Credits </h6><h6 class="text-muted" id="totalCount">1</h6></div>
+            <br/>
+            <a href="{{url_for('purchase')}}">
+                <button class="pill-button-alternate full">Buy Credits</button>
+            </a>
+            <br/>
+
+
+        </div>
+    </div>
+</div>
 </div>
 
+
+<script>
+    function countCharacters() {
+    // Get the input field value
+    var inputText = document.getElementById("inputField").value;
+    
+    // Get the length of the input text
+    var charCount = inputText.length;
+    var availableCredits = {{current_user.credits}};
+
+    
+    // Display the character count
+    document.getElementById("charCount").textContent = charCount;
+    
+    var creditCounter = Math.floor(charCount / 160) + 1;
+    var grouptotal = {{grouptotal}}
+    // Calculate credits
+    document.getElementById("creditCount").textContent = Math.floor(charCount / 160) + 1;
+    
+    // Total Credits
+    var totalCredits = creditCounter*grouptotal;
+    document.getElementById("totalCount").textContent = totalCredits
+
+    // Projected Balance
+    document.getElementById("projectedBalance").textContent = availableCredits - totalCredits;
+
+    // if negative, return red.
+    if (totalCredits > availableCredits) {
+    // If true, change the class of the alert to 'danger'
+        document.getElementById("alert").className = "statusEllipse-success";
+    }
+}
+</script>
 {% endblock %}

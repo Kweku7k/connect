@@ -58,6 +58,9 @@ def get_current_user():
     return None
      
 
+def reportTelegram():
+    pass
+
 def login_user(user):
     print("Logging in :")
     print(user)
@@ -528,7 +531,9 @@ def broadcast(groupId = None):
     print(groupId)
     if groupId is not None:
         form.group.choices = [ (group.id, f"{group.name} - {group.total} contacts" )for group in Groups.query.filter_by(id = groupId).all()]
+        grouptotal = Groups.query.get_or_404(groupId).total
     else:
+        grouptotal = 0
         form.group.choices = [ (group.id, f"{group.name} - {group.total} contacts" )for group in Groups.query.all()]
     if request.method == 'POST':
         if form.validate_on_submit():
@@ -581,7 +586,7 @@ def broadcast(groupId = None):
             if response is not None:
                 flash(f'{response["summary"]["total_sent"]} Messages were sent succesfully. Please check your reports')
                 return redirect(url_for('dashboard'))
-    return render_template('broadcast.html', form=form, current_user=current_user)
+    return render_template('broadcast.html', form=form, current_user=current_user, grouptotal=grouptotal)
 
 @app.route('/dashboard', methods=['GET', 'POST'])
 @token_required
