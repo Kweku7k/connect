@@ -3,7 +3,7 @@
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <title>Appreciation Email</title>
+    <title>Reset Password</title>
     <style media="all" type="text/css">
     /* -------------------------------------
     GLOBAL RESETS
@@ -33,20 +33,20 @@
 ------------------------------------- */
     
     body {
-      background-color: #f4f5f6;
+      background-color: #fff;
       margin: 0;
       padding: 0;
     }
     
     .body {
-      background-color: #f4f5f6;
+      background-color: #fff;
       width: 100%;
     }
     
     .container {
       max-width: 600px;
       padding: 0;
-      padding-top: 24px;
+      padding-top: 18px;
       width: 90%;
     }
     
@@ -62,7 +62,7 @@
     
     .main {
       background: #fff;
-      border: 1px solid #eaebed;
+      /* border: 1px solid #eaebed; */
       border-radius: 16px;
       width: 100%;
     }
@@ -97,72 +97,14 @@
       font-weight: normal;
       margin: 0;
       margin-bottom: 16px;
+      color: #000;
     }
     
     a {
       color: #0867ec;
       text-decoration: underline;
     }
-    /* -------------------------------------
-    BUTTONS
-------------------------------------- */
-    
-    .btn {
-      box-sizing: border-box;
-      min-width: 100% !important;
-      width: 100%;
-    }
-    
-    .btn > tbody > tr > td {
-      padding-bottom: 16px;
-    }
-    
-    .btn table {
-      width: auto;
-    }
-    
-    .btn table td {
-      background-color: #ffffff;
-      border-radius: 4px;
-      text-align: center;
-    }
-    
-    .btn a {
-      background-color: #ffffff;
-      border: solid 2px #0867ec;
-      border-radius: 4px;
-      box-sizing: border-box;
-      color: #0867ec;
-      cursor: pointer;
-      display: inline-block;
-      font-size: 16px;
-      font-weight: bold;
-      margin: 0;
-      padding: 12px 24px;
-      text-decoration: none;
-      text-transform: capitalize;
-    }
-    
-    .btn-primary table td {
-      background-color: #0867ec;
-    }
-    
-    .btn-primary a {
-      background-color: #0867ec;
-      border-color: #0867ec;
-      color: #ffffff;
-    }
-    
-    @media all {
-      .btn-primary table td:hover {
-        background-color: #ec0867 !important;
-      }
-      .btn-primary a:hover {
-        background-color: #ec0867 !important;
-        border-color: #ec0867 !important;
-      }
-    }
-    
+  
     /* -------------------------------------
     RESPONSIVE AND MOBILE FRIENDLY STYLES
 ------------------------------------- */
@@ -219,27 +161,10 @@
                   <td class="wrapper">
                     <h4 style="color: blue;font-size: 35px;font-weight: 800;display:inline-block;">PrestoSolutions</h4>
                   
-                    <p>Order number <b>#9784993</b></p>
-
-                    <p style="font-size: 30px;font-weight: 800;display:inline-block;">Thank You for Your Transaction</p>
-                  <p>Your trust in our services means the world to us, and we're delighted to have had the opportunity to assist you with your transaction.</p>
+                  <p><b>To Reset Your Password</b></p>
                   
-                  <p>Click the button below to get in touch with our support team. We're here to assist you every step of the way</p>
-                  <table role="presentation" border="0" cellpadding="0" cellspacing="0" class="btn btn-primary">
-                    <tbody>
-                      <tr>
-                        <td align="left">
-                          <table role="presentation" border="0" cellpadding="0" cellspacing="0">
-                            <tbody>
-                              <tr>
-                                <td> <a href="mailto:info@prestoghana.com" target="_blank">Give Feedback</a> </td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  <p>Visit the following link: <a href="">{{body.link}}</a>. If you did not make this request then simply ignore this email and no changes will be made.</p>
+                  
                   <p>Good luck 🥂</p>
                 </td>
               </tr>

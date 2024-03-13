@@ -690,6 +690,10 @@ def recipt():
 def success():
     return render_template('email/success.html')
 
+@app.route('/reset', methods=['GET', 'POST'])
+def reset():
+    return render_template('email/reset.html')
+
 @app.route('/thankyou', methods=['GET', 'POST'])
 def thankyou():
     return render_template('email/thankyou.html')
