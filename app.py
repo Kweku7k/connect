@@ -686,6 +686,10 @@ def adduser():
 def recipt():
     return render_template('email/recipt.html')
 
+@app.route('/booking', methods=['GET', 'POST'])
+def booking():
+    return render_template('email/booking.html')
+
 @app.route('/success', methods=['GET', 'POST'])
 def success():
     return render_template('email/success.html')
