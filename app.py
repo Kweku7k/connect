@@ -691,6 +691,22 @@ def adduser():
 def recipt():
     return render_template('email/recipt.html')
 
+@app.route('/booking', methods=['GET', 'POST'])
+def booking():
+    return render_template('email/booking.html')
+
+@app.route('/success', methods=['GET', 'POST'])
+def success():
+    return render_template('email/success.html')
+
+@app.route('/reset', methods=['GET', 'POST'])
+def reset():
+    return render_template('email/reset.html')
+
+@app.route('/thankyou', methods=['GET', 'POST'])
+def thankyou():
+    return render_template('email/thankyou.html')
+
 @app.route('/purchase/<int:id>', methods=['GET','POST'])
 def pay(id):
     print("purchasing package id.")
