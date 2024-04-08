@@ -16,13 +16,14 @@
         margin: auto 10px;
     }
 
-        .defaultCard{
+        .defaultCard {
             box-shadow: 0 2px 8px 0 rgba(77, 66, 204, 0.06), 0 60px 80px 0 rgba(44, 29, 209, 0.02), 0 40px 50px 0 rgba(22, 3, 233, 0.05);
-            /* cursor: pointer; */
             padding: 30px;
             width: 100%;
             transition: width 1s;
             margin-bottom: 3vh auto;
+            text-align: left; /* Left align content within card */
+            display: inline-block; /* Ensure card width doesn't extend to full width */
         }
 
         div{
@@ -34,6 +35,14 @@
             max-width: 100%;
             height: auto;
             margin-bottom: 3vh;
+        }
+
+        .heading p{
+            color: #ca181e !important;
+            font-size: 40px !important;
+            font-weight: 800 !important;
+            display:inline-block;
+            text-decoration: none !important;
         }
 
         @media (min-width: 768px) {
@@ -48,15 +57,8 @@
     <body style="margin:auto 10px; color:black; font-family: 'Plus Jakarta', sans-serif;">
 
         <div class="defaultCard">
-
-            <h4 style="color: black;font-size: 40px;font-weight: 800;display:inline-block;">central.edu.gh</h4>
-            <img src="" alt="">
-            <hr>
-            <!-- <br> -->
-
-            <!-- <p style="font-size: 17px; font-weight: 700; margin-bottom: 15px;">Hello Nana Kweku Adumatta,</p> -->
-
-            <p style="font-size: 17px; font-weight: 600;">A new Medical Screening Booking Slot. Checkout the details below:</p>
+            <img src="https://central.edu.gh/static/img/Central-Uni-logo.png" alt="Central University Logo" width="200px">
+            <p style="font-size: 17px; font-weight: 600;">New Medical Screening Booking Slot. Checkout the details below:</p>
 
             <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="border-top-width:1px;border-top-style:dashed;border-top-color:rgb(238,238,238);border-collapse:collapse;width:480px;margin-bottom:35px">
                 <thead>
@@ -75,7 +77,7 @@
                     </td>
                     <td style="font-family:sans-serif;font-size:14px;vertical-align:middle;padding:10px 0px;text-align:left;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:rgb(217,223,234)">
                         <div style="font-family:sans-serif;font-size:16px;font-weight:normal;margin:0px;color:rgb(54,71,83);line-height:28px">
-                        <span style="font-weight:bold">Onikosi Adewale</span></div>
+                        <span style="font-weight:bold">{{body.name}}</span></div>
                     </td>
                 </tr>
                 <tr>
@@ -86,7 +88,7 @@
                     </td>
                     <td style="font-family:sans-serif;font-size:14px;vertical-align:middle;padding:10px 0px;text-align:left;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:rgb(217,223,234)">
                         <div style="font-family:sans-serif;font-size:16px;font-weight:normal;margin:0px;color:rgb(54,71,83);line-height:28px">
-                        <span style="font-weight:bold">0592033701</span></div>
+                        <span style="font-weight:bold">{{body.number}}</span></div>
                     </td>
                 </tr>
                 <tr>
@@ -97,7 +99,7 @@
                     </td>
                     <td style="font-family:sans-serif;font-size:14px;vertical-align:middle;padding:10px 0px;text-align:left;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:rgb(217,223,234)">
                         <div style="font-family:sans-serif;font-size:16px;font-weight:normal;margin:0px;color:rgb(54,71,83);line-height:28px">
-                        <span style="font-weight:bold">2024-04-10 00:00:00</span></div>
+                        <span style="font-weight:bold">{{body.date}}</span></div>
                     </td>
                 </tr>
                 
