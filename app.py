@@ -707,6 +707,11 @@ def reset():
 def thankyou():
     return render_template('email/thankyou.html')
 
+@app.route('/survey', methods=['GET', 'POST'])
+def survey():
+    return render_template('email/survey.html')
+
+
 @app.route('/purchase/<int:id>', methods=['GET','POST'])
 def pay(id):
     print("purchasing package id.")
