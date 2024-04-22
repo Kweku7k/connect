@@ -60,75 +60,22 @@
 <body>
 
 <div class="defaultCard">
-    <h4 style="color: blue; font-size: 40px; font-weight: 800; display: inline-block;">PrestoSolutions</h4>
+    <h4 style="color: #992621; font-size: 30px; font-weight: 800; display: inline-block;">Central University</h4>
     <!-- <hr> -->
 
-    <img src="/static/img/notification.gif" alt="" width="130px" >
 
-    <p style="font-size: 17px; font-weight: normal; margin-bottom: 15px;">Hello Nana Kweku Adumatta,</p>
+    <p style="font-size: 17px; font-weight: normal; margin-bottom: 15px;">Hello {{body.name}},</p>
 
     <p style="font-size: 17px; font-weight: normal; text-align: left;">
-        Thank you for contacting us. We have received your message. Here are the details:
+        Thank you for registering on Central Alumni Platform. We are excited to have you on board!
     </p>
 
-<table role="presentation" border="0" cellpadding="0" cellspacing="0" style="border-top-width:1px;border-top-style:dashed;border-top-color:rgb(238,238,238);border-collapse:collapse;width:480px;margin-bottom:35px">
-    <thead>
-        <td colspan="2" style="padding:10px 0px 0px">
-            <h3 style="color:rgb(54,71,83);font-weight:700">Form Response</h3>
-        </td>
-    </thead>
-    <tbody>
-        <tr>
-            <td style="width: 120px; font-family:sans-serif;font-size:14px;vertical-align:middle;padding:10px 0px;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:rgb(217,223,234)">
-                <div style="font-family:sans-serif;font-size:16px;font-weight:normal;margin:0px;color:rgb(54,71,83);line-height:28px">
-                    Name
-                </div>
-            </td>
-            <td style="font-family:sans-serif;font-size:14px;vertical-align:middle;padding:10px 0px;text-align:left;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:rgb(217,223,234)">
-                <div style="font-family:sans-serif;font-size:16px;font-weight:normal;margin:0px;color:rgb(54,71,83);line-height:28px">
-                    <span style="font-weight:bold">{{body.name}}</span>
-                </div>
-            </td>
-        </tr>
-        <tr>
-            <td style="font-family:sans-serif;font-size:14px;vertical-align:middle;padding:10px 0px;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:rgb(217,223,234)">
-                <div style="font-family:sans-serif;font-size:16px;font-weight:normal;margin:0px;color:rgb(54,71,83);line-height:28px">
-                    Phone
-                </div>
-            </td>
-            <td style="font-family:sans-serif;font-size:14px;vertical-align:middle;padding:10px 0px;text-align:left;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:rgb(217,223,234)">
-                <div style="font-family:sans-serif;font-size:16px;font-weight:normal;margin:0px;color:rgb(54,71,83);line-height:28px">
-                    <span style="font-weight:bold">{{body.number}}</span>
-                </div>
-            </td>
-        </tr>
-        <tr>
-            <td style="font-family:sans-serif;font-size:14px;vertical-align:middle;padding:10px 0px;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:rgb(217,223,234)">
-                <div style="font-family:sans-serif;font-size:16px;font-weight:normal;margin:0px;color:rgb(54,71,83);line-height:28px">
-                    Email
-                </div>
-            </td>
-            <td style="font-family:sans-serif;font-size:14px;vertical-align:middle;padding:10px 0px;text-align:left;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:rgb(217,223,234)">
-                <div style="font-family:sans-serif;font-size:16px;font-weight:normal;margin:0px;color:rgb(54,71,83);line-height:28px">
-                    <span style="font-weight:bold">{{body.email}}</span>
-                </div>
-            </td>
-        </tr>
-        <tr>
-            <td style="font-family:sans-serif;font-size:14px;vertical-align:middle;padding:10px 0px;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:rgb(217,223,234)">
-                <div style="font-family:sans-serif;font-size:16px;font-weight:normal;margin:0px;color:rgb(54,71,83);line-height:28px">
-                    Message
-                </div>
-            </td>
-            <td style="font-family:sans-serif;font-size:14px;vertical-align:middle;padding:10px 0px;text-align:left;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:rgb(217,223,234)">
-                <div style="font-family:sans-serif;font-size:16px;font-weight:normal;margin:0px;color:rgb(54,71,83);line-height:28px">
-                    <p style="font-weight:bold">{{body.message}}</p>
-                </div>
-            </td>
-        </tr>
-    </tbody>
-</table>
 
+    <p>To complete your registration and activate your account, please click on the following link: </p>
+
+    <p>{{body.link}}</p>
+
+    <br>
     <p style="font-family:sans-serif; font-size: 17px; font-weight: normal; line-height: 1.7;">
         This email is powered by <a href="https://prestoghana.com">PrestoGhana</a>
     </p>
