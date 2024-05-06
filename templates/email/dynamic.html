@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+        @font-face {
+            font-family: 'Poppins', sans serif;
+            src: url('PlusJakartaSans-VariableFont_wght.woff2') format('woff2-variations'),
+                url('PlusJakartaSans-Italic-VariableFont_wght.woff2') format('woff2-variations');
+            font-weight: 100 500;
+            font-style: normal;
+        }
+
+        body {
+        font-family: 'Plus Jakarta', sans-serif;
+        color: black;
+        margin: auto 10px;
+    }
+
+        .defaultCard {
+            box-shadow: 0 2px 8px 0 rgba(77, 66, 204, 0.06), 0 60px 80px 0 rgba(44, 29, 209, 0.02), 0 40px 50px 0 rgba(22, 3, 233, 0.05);
+            padding: 30px;
+            width: 100%;
+            transition: width 1s;
+            margin-bottom: 3vh auto;
+            text-align: left; /* Left align content within card */
+            display: inline-block; /* Ensure card width doesn't extend to full width */
+        }
+
+        div{
+            font-family: 'Plus Jakarta', sans-serif;
+            font-weight:200;
+        }
+
+         img {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 3vh;
+        }
+
+        .heading p{
+            color: #ca181e !important;
+            font-size: 40px !important;
+            font-weight: 800 !important;
+            display:inline-block;
+            text-decoration: none !important;
+        }
+
+        @media (min-width: 768px) {
+            /* Adjust the max-width for larger screens (you can customize this value) */
+            img {
+                max-width: 50%;
+            }
+        }
+        </style>
+
+    </head>
+    <body style="margin:auto 10px; color:black; font-family: 'Plus Jakarta', sans-serif;">
+
+        <div class="defaultCard">
+            <!-- <img src="https://central.edu.gh/static/img/Central-Uni-logo.png" alt="Central University Logo" width="200px"> -->
+            <img src={{body.image}} alt="Central University Logo" width="200px">
+            <p style="font-size: 17px; font-weight: 600;">{{body.description}}</p>
+
+            {% if body.type == "short" %}
+            
+            <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="border-top-width:1px;border-top-style:dashed;border-top-color:rgb(238,238,238);border-collapse:collapse;width:480px;margin-bottom:35px">
+                <thead>
+                    <tr>
+                        <td colspan="2" style="padding:10px 0px 0px">
+                            <h3 style="color:rgb(54,71,83);font-weight:700">{{body.header}}</h3>
+                        </td>
+                    </tr>
+                </thead>
+                <tbody>
+                        {% for key, value in body.data.items() %}
+                            <tr>
+                                <td style="font-family:sans-serif;font-size:14px;vertical-align:middle;padding:10px 0px;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:rgb(217,223,234)">
+                                    <div style="font-family:sans-serif;font-size:16px;font-weight:normal;margin:0px;color:rgb(54,71,83);line-height:28px">
+                                        {{key}}
+                                    </div>
+                                </td>
+                                <td style="font-family:sans-serif;font-size:14px;vertical-align:middle;padding:10px 0px;text-align:left;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:rgb(217,223,234)">
+                                    <div style="font-family:sans-serif;font-size:16px;font-weight:normal;margin:0px;color:rgb(54,71,83);line-height:28px">
+                                        <span style="font-weight:bold">{{value}}</span></div>
+                                    </td>
+                                </tr>
+                        {% endfor %}  
+
+
+                </tbody>
+            </table>
+
+            {% else %}
+
+                {% for key, value in body.data.items() %}
+                
+
+                    <h6 style="font-family:sans-serif;font-weight:normal;margin:0px;color:rgb(54,71,83);line-height:28px">{{key}}</h6>
+                    <h4 style="font-family:sans-serif;font-weight:bold;margin:0px;line-height:28px">{{value}}</h4>
+
+                {% endfor %}
+
+            {% endif %}
+
+
+
+            <div>
+                <p style="font-family:sans-serif;font-size:17px;font-weight:normal;margin:0px 0px 15px;color:rgb(54,71,83);line-height:1.7">This email is powered by <a href='https://prestoghana.com'>PrestoGhana</a></p>
+            </div>
+
+
+        </div>
+
+    </body>
+    </html>
