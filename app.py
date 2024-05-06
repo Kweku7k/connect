@@ -6,6 +6,7 @@ import os
 import pprint
 import smtplib
 from flask import Flask, flash, jsonify,redirect,url_for,render_template,request, session
+from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import requests
@@ -23,6 +24,7 @@ app=Flask(__name__)
 app.config['SECRET_KEY'] = 'c288b2157916b13s523242q3wede00ba242sdqwc676dfde'
 app.config['JWT_SECRET_KEY'] = 'c288b2157916b13s523242q3wede00ba242sdqwc676dfde'
 
+
 # app.config['SQLALCHEMY_DATABASE_URI']= 'postgresql://postgres:adumatta@localhost:5432/connect'
 # app.config['SQLALCHEMY_DATABASE_URI']= 'postgresql://postgres:adumatta@database-1.crebgu8kjb7o.eu-north-1.rds.amazonaws.com:5432/connect'
 app.config['SQLALCHEMY_DATABASE_URI']= os.environ.get('CONNECT_DB_URL', 'postgresql://postgres:adumatta@localhost:5432/connect' )
@@ -31,6 +33,7 @@ db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 bcrypt = Bcrypt(app)
 
+cors = CORS(app)
 
 algorithms = ["HS256"]
 
