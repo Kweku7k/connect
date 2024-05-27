@@ -16,6 +16,9 @@
           <a href="{{url_for('broadcast', groupId=group.id)}}">
             <button class="pill-button" style="margin-right: 10px;">Send Message</button>
           </a>
+          <a href="{{url_for('broadcastemail', groupId=group.id)}}">
+            <button class="pill-button" style="margin-right: 10px;">Send An Email</button>
+          </a>
           <a href="{{url_for('new', groupId=group.id)}}">
             <button class="pill-button-alternate" style="margin-right: 10px;">Add A New Contact</button>
           </a>

@@ -76,6 +76,18 @@
               {% endif %}
         </div>
 
+        <div class="inputTextHolder">
+            {{ form.email.label }}
+            {{ form.email (class="inputTextCard") }}
+            {% if form.email.errors %}
+            <div class="invalid-feedback">
+                {% for error in form.email.errors %}
+                      <span>{{ error }}</span>
+                  {% endfor %}
+              </div>
+              {% endif %}
+        </div>
+
         </div>
 
     </div>

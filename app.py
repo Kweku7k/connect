@@ -37,8 +37,6 @@ cors = CORS(app)
 
 algorithms = ["HS256"]
 
-
-
 baseUrl = os.environ.get('CONNECT_BASE_URL', 'https://connect.prestoghana.com')
 prestoUrl = os.environ.get('PRESTO_PROD_URL', 'https://prestoghana.com')
 server = os.environ.get('SERVER', None)
@@ -209,6 +207,7 @@ class Contacts(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, nullable=False)
     phoneNumber = db.Column(db.String)
+    email = db.Column(db.String)
     appId = db.Column(db.String)
     slug = db.Column(db.String)
     groupId = db.Column(db.Integer)
@@ -525,6 +524,8 @@ def getgroup(groupId):
     print(groups)
     return groups
 
+
+
 @app.route('/broadcast', methods=['GET', 'POST'])
 @app.route('/broadcast/<int:groupId>', methods=['GET', 'POST'])
 def broadcast(groupId = None):
@@ -590,6 +591,82 @@ def broadcast(groupId = None):
                 flash(f'{response["summary"]["total_sent"]} Messages were sent succesfully. Please check your reports')
                 return redirect(url_for('dashboard'))
     return render_template('broadcast.html', form=form, current_user=current_user, grouptotal=grouptotal)
+
+
+
+
+@app.route('/broadcastemail', methods=['GET', 'POST'])
+@app.route('/broadcastemail/<int:groupId>', methods=['GET', 'POST'])
+def broadcastemail(groupId = None):
+    current_user = get_current_user()
+    form = BroadcastEmailForm()
+
+    print(groupId)
+
+    if groupId is not None:
+        form.group.choices = [ (group.id, f"{group.name} - {group.total} contacts" )for group in Groups.query.filter_by(id = groupId).all()]
+        grouptotal = Groups.query.get_or_404(groupId).total
+    else:
+        grouptotal = 0
+        form.group.choices = [ (group.id, f"{group.name} - {group.total} contacts" )for group in Groups.query.all()]
+    
+    if request.method == 'POST':
+        
+        if form.validate_on_submit():
+
+            if current_user.credits < 0:
+                flash(f'You dont have enough credits, Please purchase a bundle to continue.')
+                return redirect(url_for('purchase'))
+            
+            message = form.message.data + f"\n{datetime.datetime.now().strftime('%c')}"+"\nPowered By PrestoConnect"
+            groupId = form.group.data
+            # senderId = form.senderId.data
+
+            print("senderId")
+            # print(senderId)
+
+            group = getgroup(groupId)
+            groupData = Groups.query.get_or_404(groupId)
+
+            if group is not None:
+                contacts = [contacts.email for contacts in group]
+            else:
+                contacts = Contacts.query.all()
+
+            print("Contacts: ",contacts)
+            print("Message:",message,"Group",group)
+
+            contacts = list(dict.fromkeys(contacts))
+            print(contacts)
+
+            response = sendAnEmail(form.title.data, form.subject.data, form.message.data, contacts)
+
+            print("response!")
+            pprint.pprint(response)
+            response["presto_summary_data"] = {
+                "message":message,
+                "groupName":groupData.name,
+                "groupId":groupData.id,
+                "appId":current_user.appId,
+                "balance":current_user.balance
+                # "senderId":senderId
+            }
+
+            rawdata = {
+                "contacts":contacts
+            }
+
+            # create report.
+            createReport(response,rawdata)
+
+            if response is not None:
+                flash(f'{response["summary"]["total_sent"]} Messages were sent succesfully. Please check your reports')
+                return redirect(url_for('dashboard'))
+
+    else:
+        print(form.errors)
+    return render_template('broadcastemail.html', form=form, current_user=current_user, grouptotal=grouptotal)
+
 
 @app.route('/dashboard', methods=['GET', 'POST'])
 @token_required
@@ -1046,10 +1123,12 @@ def updateContact(id):
         form.name.data = user.name
         form.phone.data = user.phoneNumber
         form.group.data = group.name
+        form.email.data = user.email
 
     elif request.method == 'POST':
         user.name = form.name.data
         user.phoneNumber = form.phone.data
+        user.email = form.email.data
 
         try:
             db.session.commit()
@@ -1282,11 +1361,13 @@ def internal_server_error(error):
 
 @app.route('/foomail', methods=['GET', 'POST'])
 def foomail():
+    print("REQUEST")
+    print(request )
     if request.method == 'POST':
         body = request.json
         pprint.pprint(body)
 
-        templateId = body.get("templateId")
+        templateId = body.get("templateId","dynamic")
     
         html_content =  render_template(f'email/{templateId}.html', body = body.get("templateBody") )
         return sendAnEmail(body.get("title"), body.get("subject"), html_content, body.get("receivers"))
@@ -1294,12 +1375,20 @@ def foomail():
         return "Bruh."
 
 
-# send an email
+def broadcast_mail(body):
+    pprint.pprint(body)
 
-def sendAnEmail(title, subject, html_content, email_receiver, path=None):
+    templateId = body.get("templateId")
+
+    html_content =  render_template(f'email/{templateId}.html', body = body.get("templateBody") )
+    return sendAnEmail(body.get("title"), body.get("subject"), html_content, body.get("receivers"), bcc_receivers=body.get("bcc"))
+
+
+def sendAnEmail(title, subject, html_content, email_receiver, bcc_receivers=None,path=None):
     print("Attempting to send an email")
     print(email_receiver)
     print(type(email_receiver))
+
 
     email_sender = os.environ["PRESTO_MAIL_USERNAME"]
     email_password = os.environ["PRESTO_MAIL_PASSWORD"]
@@ -1309,6 +1398,13 @@ def sendAnEmail(title, subject, html_content, email_receiver, path=None):
     em["From"] = f"{title} <{email_sender}>"
     em["To"] = email_receiver
     em["Subject"] = subject
+
+    if bcc_receivers:
+        if isinstance(bcc_receivers, list):
+            em["Bcc"] = ", ".join(bcc_receivers)
+        else:
+            raise TypeError("bcc_receivers must be a list of email addresses")
+
 
     em.set_content("")
     em.add_alternative(html_content, subtype="html")
@@ -1328,7 +1424,8 @@ def sendAnEmail(title, subject, html_content, email_receiver, path=None):
 
     server = smtplib.SMTP_SSL(smtp_server, port)
     server.login(email_sender, email_password)
-    server.sendmail(email_sender, email_receiver, em.as_string())
+    all_recipients = [email_receiver] + (bcc_receivers if bcc_receivers else [])
+    server.sendmail(email_sender, all_recipients, em.as_string())
     server.quit()
     return "Done!"
 

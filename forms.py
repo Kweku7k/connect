@@ -9,6 +9,13 @@ class BroadcastForm(FlaskForm):
     message = StringField('Message',widget=TextArea(), validators=[DataRequired()])
     submit = SubmitField('Broadcast')
 
+class BroadcastEmailForm(FlaskForm):
+    group = SelectField('Group', choices=[('All Contacts - 30 contacts')])
+    title = StringField('Title', validators=[DataRequired()])
+    subject = StringField('Subject',validators=[DataRequired()])
+    message = StringField('Message',widget=TextArea(), validators=[DataRequired()])
+    submit = SubmitField('Broadcast')
+
 class AddUserForm(FlaskForm):
     group = SelectField('Group', choices=[('All Contacts - 30 contacts')])
     name = StringField('Name', validators=[DataRequired()])
