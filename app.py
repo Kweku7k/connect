@@ -769,11 +769,15 @@ def adduser():
 
 @app.route('/recipt', methods=['GET', 'POST'])
 def recipt():
-    return render_template('email/recipt.html')
+    return render_template('email/receipt.html')
 
 @app.route('/booking', methods=['GET', 'POST'])
 def booking():
     return render_template('email/booking.html')
+
+@app.route('/newsletter', methods=['GET', 'POST'])
+def newsletter():
+    return render_template('email/newsletter.html')
 
 @app.route('/success', methods=['GET', 'POST'])
 def success():
