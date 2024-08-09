@@ -1374,6 +1374,54 @@ def foomail():
     else:
         return "Bruh."
 
+# route to take a csv loop throught each line
+@app.route('/dynamic_csv', methods=['GET', 'POST'])
+def dynamic_csv():
+    # accept csv file
+    if request.method == 'POST':
+        csv_file = request.files['file']
+        print(csv_file.filename)
+        # check if file is csv
+
+        if csv_file.filename.endswith('.csv'):
+            filename = save_uploaded_file(csv_file)
+            print("filename", filename)
+            # read csv file
+
+            with open(filename, mode='r', newline='') as file:
+                print("file: ",file)
+
+                # Create a DictReader object
+                csv_reader = csv.DictReader(file)
+                print('csv_reader')
+                print(csv_reader)
+
+                headers = csv_reader.fieldnames
+                print('headers')
+                print(headers)
+
+                # Iterate over the rows in the CSV file
+                for row in csv_reader:
+                    print(row)
+                    message = row['Message']
+                    # message.format(Name=row['Name'], Category=row['Category'], UssdCode=row['UssdCode'], )
+                    formattedMessage = message.format(**row)
+                    # Print each row as a dictionary
+                    print('row')
+                    print(row)
+                    print("MESSAGE")
+                    print(formattedMessage)
+                    sendMnotifySms(row['Number'], row['Number'], formattedMessage)
+                
+        
+            return 'File uploaded successfully'
+
+        else:
+            flash('Please upload a csv file')
+            return redirect(url_for('dashboard'))
+    
+
+
 
 def broadcast_mail(body):
     pprint.pprint(body)
@@ -1404,7 +1452,6 @@ def sendAnEmail(title, subject, html_content, email_receiver, bcc_receivers=None
             em["Bcc"] = ", ".join(bcc_receivers)
         else:
             raise TypeError("bcc_receivers must be a list of email addresses")
-
 
     em.set_content("")
     em.add_alternative(html_content, subtype="html")
