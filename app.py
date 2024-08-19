@@ -775,9 +775,48 @@ def recipt():
 def booking():
     return render_template('email/booking.html')
 
+@app.route('/cureset', methods=['GET', 'POST'])
+def cureset():
+    return render_template('email/cureset.html')
+
 @app.route('/newsletter', methods=['GET', 'POST'])
 def newsletter():
-    return render_template('email/newsletter.html')
+    # news_items = [
+    #     {
+    #         "link": "https://www.central.edu.gh/expand/3117",
+    #         "image": "https://webcms.central.edu.gh/wp-content/uploads/2024/07/WhatsApp-Image-2024-07-29-at-15.34.07-2.jpeg",
+    #         "category": "Historical news",
+    #         "title": "Central University and ICAG Forge Strategic Partnership",
+    #         "description": "Central University has signed a Memorandum of Understanding (MoU) with the Institute of Chartered Accountants, Ghana (ICAG). This partnership, established under the Institute of Chartered Accountants, Ghana Act, 2020, Act 1058, is poised to elevate the education and training of accountants in the country."
+    #     },
+    #     {
+    #         "link": "https://www.central.edu.gh/expand/3044",
+    #         "image": "https://webcms.central.edu.gh/wp-content/uploads/2024/07/WhatsApp-Image-2024-07-18-at-05.07.00.jpeg",
+    #         "category": "Student Activity",
+    #         "title": "CU Chaplaincy Impact Prampram SHS",
+    #         "description": "To God’s glory 94 dedicated students from Central University’s Campus Ministry under the guidance of the Chaplaincy, embarked on a meaningful outreach to Prampram Senior High School."
+    #     },
+    #     {
+    #         "link": "https://www.central.edu.gh/expand/2777",
+    #         "image": "https://webcms.central.edu.gh/wp-content/uploads/2024/05/IMG_6992.jpg",
+    #         "category": "Alumni Focus",
+    #         "title": "CU Alumni Association New Executives Sworn into Office",
+    #         "description": "The new executives of the Central University (CU) Alumni Association were sworn into office on Thursday May 16 2024 at a short ceremony held at the Christ Temple Campus (CTC)."
+    #     }
+    # ]
+    title = "The Reporter 🗞️"
+
+    # Render the HTML content
+    html_content = render_template('email/newsletter.html', title=title)
+
+    # Define email details
+    subject = "Central University Newsletter - August 2024"
+    receivers = ["oadewale@central.edu.gh"]
+
+    # Send the email
+    sendAnEmail(title, subject, html_content, receivers)
+
+    return "Newsletter sent successfully!"
 
 @app.route('/success', methods=['GET', 'POST'])
 def success():
@@ -1365,18 +1404,31 @@ def internal_server_error(error):
 
 @app.route('/foomail', methods=['GET', 'POST'])
 def foomail():
-    print("REQUEST")
-    print(request )
     if request.method == 'POST':
         body = request.json
-        pprint.pprint(body)
+        templateId = body.get("templateId", "dynamic")  # Use 'dynamic' as default template
+        
+        # Check if the templateId is 'newsletter'
+        if templateId == "newsletter":
+            # Prepare the news_items data
 
-        templateId = body.get("templateId","dynamic")
-    
-        html_content =  render_template(f'email/{templateId}.html', body = body.get("templateBody") )
-        return sendAnEmail(body.get("title"), body.get("subject"), html_content, body.get("receivers"))
+            # Render the 'newsletter' template with news_items
+            html_content = render_template('email/newsletter.html')
+        
+        else:
+            # For other templates, render with the provided body data
+            html_content = render_template(f'email/{templateId}.html', body=body.get("templateBody"))
+
+        # Send the email
+        title = body.get("title", "No Title")
+        subject = body.get("subject", "No Subject")
+        receivers = body.get("receivers", [])
+
+        sendAnEmail(title, subject, html_content, receivers)
+
+        return "Email sent successfully!"
     else:
-        return "Bruh."
+        return "This endpoint only supports POST requests."
 
 # route to take a csv loop throught each line
 @app.route('/dynamic_csv', methods=['GET', 'POST'])
