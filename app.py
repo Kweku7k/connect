@@ -775,6 +775,10 @@ def recipt():
 def booking():
     return render_template('email/booking.html')
 
+@app.route('/cureset', methods=['GET', 'POST'])
+def cureset():
+    return render_template('email/cureset.html')
+
 @app.route('/newsletter', methods=['GET', 'POST'])
 def newsletter():
     return render_template('email/newsletter.html')
