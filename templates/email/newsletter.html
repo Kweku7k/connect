@@ -199,31 +199,34 @@
 
         <div class="content">
 
-            <!--- {% for item in news_items %}
+            {% for item in body.data %}
             <div class="news-item">
                     <a href="{{item.link}}">
                     <img src="{{ item.image }}" alt="image">
-                    <h4>{{item.category}}</h4>
+                    <!-- <h4>{{item.category}}</h4> -->
                     <h2>{{item.title}}</h2>
                     <p>{{item.description}}</p>
                     <span class="read-more">Read More</span>
                 </a>
             </div>
-            {% endfor %} -->
-            <div class="news-item">
+            {% endfor %}
+
+
+
+           <!--  <div class="news-item">
             <a href="https://www.central.edu.gh/expand/3117">
                 <img src="https://webcms.central.edu.gh/wp-content/uploads/2024/07/WhatsApp-Image-2024-07-29-at-15.34.07-2.jpeg" alt="News 1">
                 <h4> Historical news</h4>
                <h2>Central University and ICAG Forge Strategic Partnership</h2>
                 <p>Central University has signed a Memorandum of Understanding (MoU) with the Institute of Chartered Accountants, Ghana (ICAG). This partnership, established under the Institute of Chartered Accountants, Ghana Act, 2020, Act 1058, is poised to elevate the education and training of accountants in the country.</p>
                 
-                <!--- <div class="author">
+                <div class="author">
                     <img src="../static/img/user.png" alt="Author">
                     <div class="author-info">
                         <span>Evans Gyamfi</span>
                         <span>1 hour ago</span>
                     </div>
-                </div> -->
+                </div>
                 <span class="read-more">Read More</span>
             </a>
             </div>
@@ -259,6 +262,7 @@
             </div>
 
         </div>
+    -->
 
         <div class="footer">
             &copy; 2024 Central University. All rights reserved.

@@ -12,7 +12,7 @@ from flask_migrate import Migrate
 import requests
 from sqlalchemy.dialects.postgresql import JSON
 from flask_bcrypt import Bcrypt
-
+from variables import *
 
 from functools import wraps
 import jwt
@@ -36,6 +36,7 @@ bcrypt = Bcrypt(app)
 cors = CORS(app)
 
 algorithms = ["HS256"]
+
 
 baseUrl = os.environ.get('CONNECT_BASE_URL', 'https://connect.prestoghana.com')
 prestoUrl = os.environ.get('PRESTO_PROD_URL', 'https://prestoghana.com')
@@ -822,6 +823,139 @@ def newsletter():
 def success():
     return render_template('email/success.html')
 
+
+@app.route('/email_templates', methods=['GET', 'POST'])
+def email_templates():
+    title = "Newsletter"
+    img = "https://cdn.dribbble.com/userupload/14695577/file/original-93441cc40aba53310e95e95ecb6424a6.png?resize=1504x1128"
+    return render_template('email/email_templates.html', title=title, img=img)
+
+# Function to take an array of id and return a group of post
+def convetIdToPost(idArray):
+    posts = []
+    
+    for i in idArray:
+        wppost = getMetaData(i)
+        wpImage = getImageUrl(wppost['rendered_content']['featured_media'])
+        post = {
+            "title": wppost['rendered_content']['title']['rendered'],
+            "link": f"https:central.edu.gh/expand/{i}",
+            "category": "cat",
+            "image": wpImage,
+            "description": wppost['rendered_content']['excerpt']['rendered'],
+        }
+        pprint.pprint(post)
+
+        posts.append(post)
+    return posts
+        
+        
+    
+
+@app.route('/email_details', methods=['GET', 'POST'])
+@app.route('/email_details/<string:id>', methods=['GET', 'POST'])
+def email_details(id=None):
+    form = BroadcastEmailForm()
+    posts = convetIdToPost([3117, 3460])
+    previewLink = "newsletter"
+    previewLinkId = id
+    # preview function should return an html render in a new opage
+    if request.method == 'POST':
+        if form.validate_on_submit():   
+            post_ids = form.allpostId.data.split(",")
+            try:
+                post_ids = [int(post_id.strip()) for post_id in post_ids]
+            except ValueError:
+                print("Invalid post ID format.")
+                return "Error: Invalid post ID format.", 400
+
+            posts = convetIdToPost(post_ids)
+            pprint.pprint(posts)
+            templateBody = {
+                    "type": "short",
+                    "name": "Nana Kweku Adumatta",
+                    "message": "Hello, hope you are well.  Please find attatched our love.",
+                    "data": posts
+            }
+            return render_template(f'email/{previewLink}.html', body=templateBody)
+        else:
+            print(form.errors)
+
+    return render_template('email/email_details.html', form=form, previewLink=previewLink, previewLinkId=previewLinkId)
+
+
+# class WordpressPost:
+#     def __init__(self, id, title, content, date, author, image):
+#         self.id = id
+#         self.title = title
+#         self.content = content
+#         self.date = date
+#         self.author = author
+#         self.image = image
+        
+def getMetaData(id):
+    # Get URL
+    url = cuwebBaseUrl + "/?rest_route=/wp/v2/posts/" + str(id)
+    print(url)
+    r = requests.get(url)
+    content = r.json()
+    # print(content)
+    # print(content[0])
+    return ({"rendered_content":content})
+
+def getImageUrl(id):
+    print(id)
+    try:
+        url = cuwebBaseUrl + "/?rest_route=/wp/v2/media/" + str(id)
+        r = requests.get(url)
+        print(r)
+        image = r.json()["guid"]["rendered"]
+    except Exception as e:
+        print(e)
+        image = "https://banner2.cleanpng.com/20190216/fox/kisspng-central-university-ghana-technology-university-col-school-of-theology-amp-missions-central-univer-5c67c799ec2858.1783459915503051779673.jpg"
+    return image
+
+def news():
+    page = request.args.get("page", "1")
+    print("page")
+    print(page)
+    # Get URL
+    id = 24
+    per_page = 30
+    url = (
+        baseWpUrl
+        + "/wp-json/wp/v2/posts?page="
+        + str(page)
+        + "&categories="
+        + str(id)
+        + "&per_page="
+        + str(per_page)
+    )
+    # url = "http://45.222.128.105/wp-json/wp/v2/posts?categories="+str(id)
+    r = requests.get(url)
+    response = r.json()
+    print("response.headers")
+    print(r.headers)
+    totalPages = r.headers["x-wp-totalpages"]
+    news = []
+    for i in response:
+        article = {}
+        article["id"] = i["id"]
+        article["image"] = getImageUrl(i["featured_media"])
+        article["title"] = i["title"]["rendered"]
+        article["date"] = i["date"]
+        article["author"] = getAuthorName(i["author"])
+        news.append(article)
+    print(news)
+    return render_template(
+        "news.html",
+        news=news,
+        totalPages=totalPages,
+        page=page,
+        per_page=per_page,
+        title="News & Blog",
+    )
+
 @app.route('/reset', methods=['GET', 'POST'])
 def reset():
     return render_template('email/reset.html')
@@ -1406,25 +1540,25 @@ def internal_server_error(error):
 def foomail():
     if request.method == 'POST':
         body = request.json
-        templateId = body.get("templateId", "dynamic")  # Use 'dynamic' as default template
+        templateId = body.get("templateId", "dynamic")
         
         # Check if the templateId is 'newsletter'
-        if templateId == "newsletter":
+        # if templateId == "newsletter":
             # Prepare the news_items data
 
             # Render the 'newsletter' template with news_items
-            html_content = render_template('email/newsletter.html')
+            # html_content = render_template('email/newsletter.html')
         
-        else:
-            # For other templates, render with the provided body data
-            html_content = render_template(f'email/{templateId}.html', body=body.get("templateBody"))
+        # For other templates, render with the provided body data
+        html_content = render_template(f'email/{templateId}.html', body=body.get("templateBody"))
 
         # Send the email
         title = body.get("title", "No Title")
         subject = body.get("subject", "No Subject")
         receivers = body.get("receivers", [])
+        bcc_receivers = body.get("bcc", [])
 
-        sendAnEmail(title, subject, html_content, receivers)
+        sendAnEmail(title, subject, html_content, receivers, bcc_receivers)
 
         return "Email sent successfully!"
     else:
@@ -1501,12 +1635,16 @@ def sendAnEmail(title, subject, html_content, email_receiver, bcc_receivers=None
     em = EmailMessage()
     em["From"] = f"{title} <{email_sender}>"
     em["To"] = email_receiver
+    # em["To"] = ", ".j÷oin(email_receiver)
     em["Subject"] = subject
 
     if bcc_receivers:
         if isinstance(bcc_receivers, list):
             em["Bcc"] = ", ".join(bcc_receivers)
+            print("bcc_receievers")
+            print(bcc_receivers)
         else:
+            print("bcc_receivers must be a list of email addresses")
             raise TypeError("bcc_receivers must be a list of email addresses")
 
     em.set_content("")
@@ -1527,10 +1665,16 @@ def sendAnEmail(title, subject, html_content, email_receiver, bcc_receivers=None
 
     server = smtplib.SMTP_SSL(smtp_server, port)
     server.login(email_sender, email_password)
-    all_recipients = [email_receiver] + (bcc_receivers if bcc_receivers else [])
+    all_recipients = email_receiver
+    # all_recipients = [email_receiver] + (bcc_receivers if bcc_receivers else [])
+    print('all_recipients')
+    print(all_recipients)
     server.sendmail(email_sender, all_recipients, em.as_string())
     server.quit()
-    return "Done!"
+    return {
+        "recipeints":all_recipients, 
+        "message":"Email sent successfully"
+        }
 
 
 
