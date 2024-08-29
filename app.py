@@ -12,6 +12,8 @@ from flask_migrate import Migrate
 import requests
 from sqlalchemy.dialects.postgresql import JSON
 from flask_bcrypt import Bcrypt
+from bs4 import BeautifulSoup
+
 
 
 from functools import wraps
@@ -1475,6 +1477,44 @@ def sendAnEmail(title, subject, html_content, email_receiver, bcc_receivers=None
     server.sendmail(email_sender, all_recipients, em.as_string())
     server.quit()
     return "Done!"
+
+def fetch_metadata(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Check if the request was successful
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Fetching the title
+        title = soup.find('title').string if soup.find('title') else 'No title found'
+
+        # Fetching meta description
+        description = soup.find('meta', attrs={'name': 'description'})
+        description = description['content'] if description else 'No description found'
+
+        # Fetching meta keywords
+        keywords = soup.find('meta', attrs={'name': 'keywords'})
+        keywords = keywords['content'] if keywords else 'No keywords found'
+
+        return {
+            'url': url,
+            'title': title,
+            'description': description,
+            'keywords': keywords
+        }
+    
+    except requests.exceptions.RequestException as e:
+        return {
+            'url': url,
+            'error': str(e)
+        }
+
+def fetch_metadata_from_urls(urls):
+    metadata_list = []
+    for url in urls:
+        metadata = fetch_metadata(url)
+        metadata_list.append(metadata)
+    return metadata_list
+
 
 
 
