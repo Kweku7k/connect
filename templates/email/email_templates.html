@@ -11,14 +11,22 @@
 </div>
 
   <div class="row">
+    {% for template in templates %}
+    <!-- ADE:  -->
+     <a href="{{url_for('email_details', template=templateId )}}">
       <div class="col-md-4">
         <div class="card">
-          <img src="{{img}}" class="card-img-top" alt="Cover Image">
+          <img src="{{template.img}}" class="card-img-top" alt="Cover Image">
           <div class="card-body">
-            <p class="card-text">{{title}}</p>
+            <p class="card-text">{{template.title}}</p>
           </div>
         </div>
       </div>
+     </a>
+
+
+    {% endfor %}
+
   </div>
   </div>
 {% endblock %}

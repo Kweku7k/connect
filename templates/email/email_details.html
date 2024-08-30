@@ -3,22 +3,26 @@
 {% block body %}
 <div class="container">
 
-  <div class="flexBar" style="margin:3vh 0;">
+<form action="" method="post">
+    {{form.hidden_tag()}}
+    <div class="flexBar" style="margin:3vh 0;">
     <div >
       <h4>Email Templates Details</h4>
       <!-- <h6 class="text-muted">{{groupCount}} groups</h6> -->
   </div>
 
-  <a href="{{url_for(previewLink, id=previewLinkId)}}">
+  <!-- <a href="{{url_for(template, id=templateId)}}">
     <button data-bs-toggle="modal" data-bs-target="#staticBackdrop" class="pill-button">Preview</button>
-  </a>
-</div>
+  </a> -->
 
-  <div class="row">
+    {{form.submit (class="pill-button", onclick="showLoadingScreen()")}}
+
+    </div>
+
+    <div class="row">
       <div class="col-md-6">
         <div class="defaultCard">
-            <form action="" method="post">
-                {{form.hidden_tag()}}
+            
                 <h6>Send a quick email to your group</h6>
 
                 <div class="row">
@@ -70,7 +74,7 @@
 
                 <div class="inputTextHolder">
                     <h6>{{form.message.label}}</h6>
-                    {{form.message (class="inputTextCard", placeholder="Enter your message.")}}
+                    {{form.message (class="inputTextCard",id="messageInput", placeholder="Enter your message.")}}
                     {% for error in form.message.errors %}
                     <h6 style="color: red; font-weight: 100;">{{error}}</h6>
                     {% endfor %}
@@ -78,46 +82,166 @@
                 
 
             </br>
-                {{form.submit (class="pill-button", style="width:100%", onclick="showLoadingScreen()")}}
-            </form>
+                <!-- {{form.submit (class="pill-button", style="width:100%", onclick="showLoadingScreen()")}} -->
         </div>
       </div>
 
       <div class="col-md-6">
         <div class="defaultCard">
-            <form action="" method="post">
+            <form action="">
                 {{form.hidden_tag()}}
                 <h6>Send a quick email to your group</h6>
 
                 <div class="inputTextHolder">
                     <div class="row align-items-center">
+                        <label for="">Post Id</label>
                         <div class="col-md-10">
                             <div class="form-group">
-                              <label for="">Post Id</label>
                               <input type="text"
-                                class="form-control inputTextCard" id="wpurlinput" name="" id="" aria-describedby="helpId" placeholder="">
+                                class="form-control inputTextCard" id="wpurlinput" name="" id="" value="https://blog.prestovotes.com/2024/08/28/tips-to-leverage-affiliate-marketing-and-increase-revenue/" aria-describedby="helpId" placeholder="Enter your wordpress url">
                             </div>
                         </div>
                         <div class="col-md-2 d-flex justify-content-end align-items-end">
-                            <a id="addButton" class="btn btn-primary" href="#" role="button">Add</a>
+                            <a id="addButton" class="pill-button" onclick="fetchMetadata()" role="button">Add</a>
                         </div>
                     </div>
-                
-                    <div id="cardContainer" class="card-body mt-3">
-                        <!-- New cards will be appended here -->
+
+                    <div id="cardContainer"></div>
                     </div>
-                </div>
                 
                 
         
             </form>
         </div>
       </div>
-  </div>
-  </div>
+      
+    </div>
+</form>
+</div>
+
+  <script>
+let wparray = []
+function fetchMetadata() {
+    var urlInput = document.getElementById('wpurlinput');
+    var url = urlInput.value;
+
+    //TODO: convert button to spool
+    // TODO: delete button == delete from the array and call the update
+    
+
+    fetch('/fetch-metadata', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: url }),
+    })
+    .then(response => response.json())
+    .then(data => {
+
+        if (checkArray(data, wparray) == true){
+            // check if url already exists
+            formField = document.getElementById("messageInput")
+            console.log("FormField: ")
+            console.log(formField)
+
+            const cardContainer = document.getElementById('cardContainer');
+
+            if (convertArrayToFormField(wparray,formField)){
+                // I WANT TO UPDATE THIS INSTEAD
+                // createCard(data,cardContainer)
+                updateCard(wparray,data,cardContainer)
+            }
+            
+
+            // empty the url field when done.
+            urlInput.value = '';
+
+        }
+
+        }
+
+    )
+    .catch(error => console.error('Error:', error));
+}
+
+function checkArray(newValue, array){
+if (!array.includes(newValue)) {
+    console.log("Item is being added to array")
+    array.push(newValue)
+    console.log("array")
+    console.log(array)
+    return true
+
+} else {
+    console.log("Item already exists")
+    return false
+}
+}
+
+function convertArrayToFormField(array, formField){
+    try {
+        console.log(array)
+        console.log('formField')
+        console.log(formField)
+        formField.value = JSON.stringify(array)
+        console.log("URL HAS BEEN CONVERTED TO FORM ENTRY:")
+        console.log(formField)
+        console.log(array)
+        return true
+    } catch (error) {
+        return true
+    }
+}
+
+function updateCard(array, data,cardContainer){
+    // Empty Card
+    cardContainer.innerHTML = ''
+
+    array.forEach(element => {
+        createCard(element,cardContainer)
+    });
+}
+
+function createCard(data, cardContainer){
+
+    const newCard = document.createElement('div');
+    newCard.className = 'defaultCard';
+
+    newCard.innerHTML = `
+        <p><strong>${data.title}</strong> </p>
+        <p> ${data.description}</p>
+    `;
+
+    cardContainer.appendChild(newCard);
+}
+// function createCard() {
+// // Create new card div
+//     const cardContainer = document.getElementById('cardContainer');
+
+//     const newCard = document.createElement('div');
+//     newCard.className = 'defaultCard';
+
+//     newCard.innerHTML = `
+//         <div class="card-body" style="padding: 10px;">
+//             <div class="d-flex justify-content-between align-items-center">
+//                 <p class="card-text mb-0" style="flex: 1;">Post ID: ${postId}</p>
+//                 <button class="btn btn-danger btn-sm delete-button" data-id="${postId}">
+//                     <i class="fas fa-trash-alt"></i> Delete
+//                 </button>
+//             </div>
+//         </div>
+//     `;
+
+//     // Append the new card to the container
+//     cardContainer.appendChild(newCard);
+//     }
+
+</script>
 
 
-<script>
+
+<!-- <script>
     document.getElementById('addButton').addEventListener('click', function(event) {
         event.preventDefault(); // Prevent page reload
     
@@ -187,5 +311,5 @@
     
         alert(`Post ID ${postId} removed from local storage!`);
     }
-</script>
+</script> -->
 {% endblock %}

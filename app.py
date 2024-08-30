@@ -10,10 +10,11 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import requests
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.dialects.postgresql import JSONB, JSON
 from flask_bcrypt import Bcrypt
 from variables import *
-
+from bs4 import BeautifulSoup
+import json
 from functools import wraps
 import jwt
 
@@ -138,8 +139,6 @@ class SenderId(db.Model):
 
     def __repr__(self):
         return f"Sender('id: {self.senderId}', 'AppId:{self.appId}')"
-
-
 
 
 class User(db.Model):
@@ -285,6 +284,25 @@ class LedgerEntry(db.Model):
 
     def __repr__(self):
         return f"Payment Ghc('{self.amount}', ' - {self.userId}')"
+
+class EmailTemplateEntry(db.Model):
+    tablename = ['EmailTemplateEntry']
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String)
+    subject = db.Column(db.String)
+    message = db.Column(db.String)
+    templateId = db.Column(db.String)
+    groupId = db.Column(db.String)
+    date_created = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    date_sent = db.Column(db.DateTime)
+    templateBody = db.Column(JSONB, nullable=True)
+    recievers = db.Column(JSONB, nullable=True)
+    bcc = db.Column(JSONB, nullable=True)
+
+    def __repr__(self):
+        return f"EmailTemplateEntry('{self.name}', ' - {self.subject}')"
+
 
 
 
@@ -826,9 +844,15 @@ def success():
 
 @app.route('/email_templates', methods=['GET', 'POST'])
 def email_templates():
-    title = "Newsletter"
-    img = "https://cdn.dribbble.com/userupload/14695577/file/original-93441cc40aba53310e95e95ecb6424a6.png?resize=1504x1128"
-    return render_template('email/email_templates.html', title=title, img=img)
+    # ADE: TEMPLATES ARE ARRAYS SO SEND THE ARRAYS TO THE FRONT NOT INDIVIDUAL ITEMS
+    templates = [
+        {
+        "title" : "Newsletter",
+        "url":  "newsletter",
+        "img" :"https://cdn.dribbble.com/userupload/14695577/file/original-93441cc40aba53310e95e95ecb6424a6.png?resize=1504x1128"
+        }
+    ]
+    return render_template('email/email_templates.html', templates= templates)
 
 # Function to take an array of id and return a group of post
 def convetIdToPost(idArray):
@@ -853,35 +877,30 @@ def convetIdToPost(idArray):
     
 
 @app.route('/email_details', methods=['GET', 'POST'])
-@app.route('/email_details/<string:id>', methods=['GET', 'POST'])
-def email_details(id=None):
+@app.route('/email_details/<string:templateId>', methods=['GET', 'POST'])
+def email_details(templateId=None):
     form = BroadcastEmailForm()
-    posts = convetIdToPost([3117, 3460])
-    previewLink = "newsletter"
-    previewLinkId = id
+    templateId = "newsletter"
+
     # preview function should return an html render in a new opage
     if request.method == 'POST':
-        if form.validate_on_submit():   
-            post_ids = form.allpostId.data.split(",")
-            try:
-                post_ids = [int(post_id.strip()) for post_id in post_ids]
-            except ValueError:
-                print("Invalid post ID format.")
-                return "Error: Invalid post ID format.", 400
+        if form.validate_on_submit(): 
 
-            posts = convetIdToPost(post_ids)
-            pprint.pprint(posts)
+            # PROCESS JSON INTO DICTIONARY
+            pretemplateBody = json.loads(form.message.data) #TODO: Convert back to templateBody for consistency
+            pprint.pprint(pretemplateBody)  
+
             templateBody = {
                     "type": "short",
                     "name": "Nana Kweku Adumatta",
-                    "message": "Hello, hope you are well.  Please find attatched our love.",
-                    "data": posts
+                    "message": "Hello, hope you are well. Please find attatched our love.",
+                    "data": pretemplateBody
             }
-            return render_template(f'email/{previewLink}.html', body=templateBody)
+            return render_template(f'email/{templateId}.html', body=templateBody)
         else:
             print(form.errors)
 
-    return render_template('email/email_details.html', form=form, previewLink=previewLink, previewLinkId=previewLinkId)
+    return render_template('email/email_details.html', form=form, template=templateId, templateId=templateId)
 
 
 # class WordpressPost:
@@ -1675,6 +1694,63 @@ def sendAnEmail(title, subject, html_content, email_receiver, bcc_receivers=None
         "recipeints":all_recipients, 
         "message":"Email sent successfully"
         }
+
+@app.route('/fetch-metadata', methods=['POST'])
+def fetch_metadata(url=None):
+    if url is None:
+        url = request.json.get('url')
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Check if the request was successful
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        # Fetching the title
+        title = soup.find('title').string if soup.find('title') else 'No title found'
+
+        # Fetching meta description
+        description = soup.find('meta', attrs={'name': 'description'})
+        description = description['content'] if description else 'No description found'
+
+        # Fetching meta keywords
+        keywords = soup.find('meta', attrs={'name': 'keywords'})
+        keywords = keywords['content'] if keywords else 'No keywords found'
+
+        # Fetch the meta image
+        meta_image = soup.find('meta', property='og:image')
+        image_url = meta_image['content'] if meta_image else 'No image found'
+
+        return {
+            'url': url,
+            'title': title,
+            'description': description,
+            'keywords': keywords,
+            'image': image_url
+        }
+    
+    except requests.exceptions.RequestException as e:
+        return {
+            'url': url,
+            'error': str(e)
+        }
+
+def fetch_metadata_from_urls(urls):
+    metadata_list = []
+    for url in urls:
+        metadata = fetch_metadata(url)
+        metadata_list.append(metadata)
+    return metadata_list
+
+    # metadata = fetch_metadata_from_urls(urls)
+    # for data in metadata:
+    #     print(f"URL: {data['url']}")
+    #     if 'error' in data:
+    #         print(f"Error: {data['error']}")
+    #     else:
+    #         print(f"Title: {data['title']}")
+    #         print(f"Description: {data['description']}")
+    #         print(f"Keywords: {data['keywords']}")
+    #     print('-' * 80)
+
 
 
 
