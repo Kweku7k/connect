@@ -983,6 +983,11 @@ def reset():
 def thankyou():
     return render_template('email/thankyou.html')
 
+@app.route('/election')
+def election():
+    return render_template('email/election.html')
+
+
 @app.route('/survey', methods=['GET', 'POST'])
 def survey():
     return render_template('email/survey.html')
