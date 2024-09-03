@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        
+
+        body {
+            font-family: sohne,'Helvetica Neue',Helvetica,Arial,sans-serif;
+            color: #333;
+            background-color: #fff;
+            margin: 0;
+            padding: 5px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            color: #000;
+            padding: 20px;
+            text-align: start;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 30px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            font-family: sohne,'Helvetica Neue',Helvetica,Arial,sans-serif;
+            color: rgba(25,25,25,1);
+        }
+        .header img {
+            width: 200px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 16px;
+            font-weight: 300;
+            margin: 10px 0 0;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .news-item {
+            margin-bottom: 30px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 20px;
+        }
+
+        .news-item a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .news-item img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-bottom: 2px;
+        }
+
+        .news-item h2 {
+            font-size: 20px;
+            color: rgba(var(--bs-dark-rgb), var(--bs-text-opacity)) !important;
+            margin: 0 0 8px;
+            font-weight: 700;
+            line-height: 1.2;
+            opacity: 1;
+        }
+
+        .news-item h4 {
+            font-size: 14px;
+            color: rgba(var(--bs-dark-rgb), var(--bs-text-opacity)) !important;
+            margin: 0 0 5px;
+            font-weight: 400;
+            line-height: 1.1;
+            opacity: 1;
+        }
+
+        .news-item p {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #666;
+            margin: 0 0 15px;
+        }
+
+        .author {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .author img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 5px;
+            margin-top: 7px;
+        }
+
+        .author-info {
+            font-size: 14px;
+            color: #999;
+        }
+
+        .author-info span {
+            display: block;
+        }
+
+        .read-more {
+            display: inline-block;
+            color: #000;
+            font-size: 14px;
+            font-weight: 400;
+            transition: background-color 0.3s;
+            text-decoration: underline;
+        }
+
+        .socials {
+            margin-top: 20px;
+            display: flex;
+            justify-content: start;
+            gap: 15px;
+        }
+        .socials a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #fff;
+            overflow: hidden;
+        }
+        .socials a img {
+            width: 24px;
+            height: 24px;
+        }
+
+        .footer {
+            background-color: #ca181e;
+            padding: 20px;
+            text-align: center;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 28px;
+            }
+
+            .news-item h2 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <img src="https://www.central.edu.gh/static/img/ogLogo.png" alt="Central University Logo">
+            <h1>The Reporter</h1>
+            <p>
+                Bringing you the Latest News and Updates. Connect with us, via our social media links below.</a>
+            </p>
+            <div class="socials">
+                <a href="https://facebook.com/centraledugh" target="_blank">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg" alt="Facebook">
+                </a>
+                <a href="https://www.linkedin.com/school/central-university-ghana/mycompany" target="_blank">
+                    <img src="https://static.vecteezy.com/system/resources/previews/023/986/970/original/linkedin-logo-linkedin-logo-transparent-linkedin-icon-transparent-free-free-png.png" alt="Linkedin">
+                </a>
+                <a href="https://www.instagram.com/centralunivgh/" target="_blank">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png" alt="Instagram">
+                </a>
+                <a href="https://www.youtube.com/@central_university1790" target="_blank">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/4/42/YouTube_icon_%282013-2017%29.png" alt="YouTube">
+                </a>
+                <a href="https://www.central.edu.gh" target="_blank">
+                    <img src="https://icons-for-free.com/iff/png/256/global+globe+internet+network+planet+world+icon-1320184633488438282.png" alt="Website">
+                </a>
+            </div>
+        </div>
+        
+
+        <div class="content">
+
+            {% for item in body.data %}
+            <div class="news-item">
+                    <a href="{{item.link}}">
+                    <img src="{{ item.image }}" alt="image">
+                    <!-- <h4>{{item.category}}</h4> -->
+                    <h2>{{item.title}}</h2>
+                    <p>{{item.description}}</p>
+                    <span class="read-more">Read More</span>
+                </a>
+            </div>
+            {% endfor %}
+
+
+
+           <!--  <div class="news-item">
+            <a href="https://www.central.edu.gh/expand/3117">
+                <img src="https://webcms.central.edu.gh/wp-content/uploads/2024/07/WhatsApp-Image-2024-07-29-at-15.34.07-2.jpeg" alt="News 1">
+                <h4> Historical news</h4>
+               <h2>Central University and ICAG Forge Strategic Partnership</h2>
+                <p>Central University has signed a Memorandum of Understanding (MoU) with the Institute of Chartered Accountants, Ghana (ICAG). This partnership, established under the Institute of Chartered Accountants, Ghana Act, 2020, Act 1058, is poised to elevate the education and training of accountants in the country.</p>
+                
+                <div class="author">
+                    <img src="../static/img/user.png" alt="Author">
+                    <div class="author-info">
+                        <span>Evans Gyamfi</span>
+                        <span>1 hour ago</span>
+                    </div>
+                </div>
+                <span class="read-more">Read More</span>
+            </a>
+            </div>
+
+            <div class="news-item">
+                <a href="https://www.central.edu.gh/expand/3044">
+                    <img src="https://webcms.central.edu.gh/wp-content/uploads/2024/07/WhatsApp-Image-2024-07-18-at-05.07.00.jpeg" alt="News 1">
+                    <h4>Student Activity</h4>
+                   <h2>CU Chaplaincy Impact Prampram SHS</h2>
+                    <p>To God’s glory 94 dedicated students from Central University’s Campus Ministry under the guidance of the Chaplaincy, embarked on a meaningful outreach to Prampram Senior High School.</p>
+                    <span class="read-more">Read More</span>
+                </a>
+            </div>
+
+            <div class="news-item">
+                <a href="https://www.central.edu.gh/expand/2777">
+                    <img src="https://webcms.central.edu.gh/wp-content/uploads/2024/05/IMG_6992.jpg" alt="News 1">
+                    <h4>Alumni Focus</h4>
+                   <h2>CU Alumni Association New Executives Sworn into Office  </h2>
+                    <p>The new executives of the Central University (CU) Alumni Association were sworn into office on Thursday May 16 2024 at a short ceremony held at the Christ Temple Campus (CTC).</p>
+                    <span class="read-more">Read More</span>
+                </a>
+            </div>
+
+            <div class="news-item">
+                <a href="https://www.central.edu.gh/expand/757">
+                    <img src="https://webcms.central.edu.gh/wp-content/uploads/2023/07/image-4.jpeg" alt="News 1">
+                    <h4>Alumni Focus</h4>
+                   <h2>CU Alumn Focus-Mr. Mawuli Atiemo  </h2>
+                    <p>Mr. Mawuli Atiemo, the man we are spotlighting for our #AlumFocus this week, is the Country Lead for Zipline Ghana, the medical drone delivery giant that delivered over 500,000 COVID-19 vaccines to dosing centers, mostly within hard-to-reach areas around all four of its distribution centers in Ghana.</p>
+                    <span class="read-more">Read More</span>
+                </a>
+            </div>
+
+        </div>
+    -->
+
+        <div class="footer">
+            &copy; 2024 Central University. All rights reserved.
+        </div>
+    </div>
+
+</body>
+</html>
+
+

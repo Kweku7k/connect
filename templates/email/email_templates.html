@@ -1,0 +1,32 @@
+{% extends "layout.html" %}
+
+{% block body %}
+<div class="container">
+
+  <div class="flexBar" style="margin:3vh 0;">
+    <div >
+      <h4>Email Templates</h4>
+      <!-- <h6 class="text-muted">{{groupCount}} groups</h6> -->
+  </div>
+</div>
+
+  <div class="row">
+    {% for template in templates %}
+    <!-- ADE:  -->
+     <a href="{{url_for('email_details', template=templateId )}}">
+      <div class="col-md-4">
+        <div class="card">
+          <img src="{{template.img}}" class="card-img-top" alt="Cover Image">
+          <div class="card-body">
+            <p class="card-text">{{template.title}}</p>
+          </div>
+        </div>
+      </div>
+     </a>
+
+
+    {% endfor %}
+
+  </div>
+  </div>
+{% endblock %}

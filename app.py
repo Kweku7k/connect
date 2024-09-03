@@ -10,12 +10,11 @@ from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 import requests
-from sqlalchemy.dialects.postgresql import JSON
+from sqlalchemy.dialects.postgresql import JSONB, JSON
 from flask_bcrypt import Bcrypt
+from variables import *
 from bs4 import BeautifulSoup
-
-
-
+import json
 from functools import wraps
 import jwt
 
@@ -38,6 +37,7 @@ bcrypt = Bcrypt(app)
 cors = CORS(app)
 
 algorithms = ["HS256"]
+
 
 baseUrl = os.environ.get('CONNECT_BASE_URL', 'https://connect.prestoghana.com')
 prestoUrl = os.environ.get('PRESTO_PROD_URL', 'https://prestoghana.com')
@@ -139,8 +139,6 @@ class SenderId(db.Model):
 
     def __repr__(self):
         return f"Sender('id: {self.senderId}', 'AppId:{self.appId}')"
-
-
 
 
 class User(db.Model):
@@ -286,6 +284,25 @@ class LedgerEntry(db.Model):
 
     def __repr__(self):
         return f"Payment Ghc('{self.amount}', ' - {self.userId}')"
+
+class EmailTemplateEntry(db.Model):
+    tablename = ['EmailTemplateEntry']
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String)
+    subject = db.Column(db.String)
+    message = db.Column(db.String)
+    templateId = db.Column(db.String)
+    groupId = db.Column(db.String)
+    date_created = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    date_sent = db.Column(db.DateTime)
+    templateBody = db.Column(JSONB, nullable=True)
+    recievers = db.Column(JSONB, nullable=True)
+    bcc = db.Column(JSONB, nullable=True)
+
+    def __repr__(self):
+        return f"EmailTemplateEntry('{self.name}', ' - {self.subject}')"
+
 
 
 
@@ -771,15 +788,194 @@ def adduser():
 
 @app.route('/recipt', methods=['GET', 'POST'])
 def recipt():
-    return render_template('email/recipt.html')
+    return render_template('email/receipt.html')
 
 @app.route('/booking', methods=['GET', 'POST'])
 def booking():
     return render_template('email/booking.html')
 
+@app.route('/cureset', methods=['GET', 'POST'])
+def cureset():
+    return render_template('email/cureset.html')
+
+@app.route('/newsletter', methods=['GET', 'POST'])
+def newsletter():
+    # news_items = [
+    #     {
+    #         "link": "https://www.central.edu.gh/expand/3117",
+    #         "image": "https://webcms.central.edu.gh/wp-content/uploads/2024/07/WhatsApp-Image-2024-07-29-at-15.34.07-2.jpeg",
+    #         "category": "Historical news",
+    #         "title": "Central University and ICAG Forge Strategic Partnership",
+    #         "description": "Central University has signed a Memorandum of Understanding (MoU) with the Institute of Chartered Accountants, Ghana (ICAG). This partnership, established under the Institute of Chartered Accountants, Ghana Act, 2020, Act 1058, is poised to elevate the education and training of accountants in the country."
+    #     },
+    #     {
+    #         "link": "https://www.central.edu.gh/expand/3044",
+    #         "image": "https://webcms.central.edu.gh/wp-content/uploads/2024/07/WhatsApp-Image-2024-07-18-at-05.07.00.jpeg",
+    #         "category": "Student Activity",
+    #         "title": "CU Chaplaincy Impact Prampram SHS",
+    #         "description": "To God’s glory 94 dedicated students from Central University’s Campus Ministry under the guidance of the Chaplaincy, embarked on a meaningful outreach to Prampram Senior High School."
+    #     },
+    #     {
+    #         "link": "https://www.central.edu.gh/expand/2777",
+    #         "image": "https://webcms.central.edu.gh/wp-content/uploads/2024/05/IMG_6992.jpg",
+    #         "category": "Alumni Focus",
+    #         "title": "CU Alumni Association New Executives Sworn into Office",
+    #         "description": "The new executives of the Central University (CU) Alumni Association were sworn into office on Thursday May 16 2024 at a short ceremony held at the Christ Temple Campus (CTC)."
+    #     }
+    # ]
+    title = "The Reporter 🗞️"
+
+    # Render the HTML content
+    html_content = render_template('email/newsletter.html', title=title)
+
+    # Define email details
+    subject = "Central University Newsletter - August 2024"
+    receivers = ["oadewale@central.edu.gh"]
+
+    # Send the email
+    sendAnEmail(title, subject, html_content, receivers)
+
+    return "Newsletter sent successfully!"
+
 @app.route('/success', methods=['GET', 'POST'])
 def success():
     return render_template('email/success.html')
+
+
+@app.route('/email_templates', methods=['GET', 'POST'])
+def email_templates():
+    # ADE: TEMPLATES ARE ARRAYS SO SEND THE ARRAYS TO THE FRONT NOT INDIVIDUAL ITEMS
+    templates = [
+        {
+        "title" : "Newsletter",
+        "url":  "newsletter",
+        "img" :"https://cdn.dribbble.com/userupload/14695577/file/original-93441cc40aba53310e95e95ecb6424a6.png?resize=1504x1128"
+        }
+    ]
+    return render_template('email/email_templates.html', templates= templates)
+
+# Function to take an array of id and return a group of post
+def convetIdToPost(idArray):
+    posts = []
+    
+    for i in idArray:
+        wppost = getMetaData(i)
+        wpImage = getImageUrl(wppost['rendered_content']['featured_media'])
+        post = {
+            "title": wppost['rendered_content']['title']['rendered'],
+            "link": f"https:central.edu.gh/expand/{i}",
+            "category": "cat",
+            "image": wpImage,
+            "description": wppost['rendered_content']['excerpt']['rendered'],
+        }
+        pprint.pprint(post)
+
+        posts.append(post)
+    return posts
+        
+        
+    
+
+@app.route('/email_details', methods=['GET', 'POST'])
+@app.route('/email_details/<string:templateId>', methods=['GET', 'POST'])
+def email_details(templateId=None):
+    form = BroadcastEmailForm()
+    templateId = "newsletter"
+
+    # preview function should return an html render in a new opage
+    if request.method == 'POST':
+        if form.validate_on_submit(): 
+
+            # PROCESS JSON INTO DICTIONARY
+            pretemplateBody = json.loads(form.message.data) #TODO: Convert back to templateBody for consistency
+            pprint.pprint(pretemplateBody)
+
+            # 
+
+            templateBody = {
+                "type": "short",
+                "name": "Nana Kweku Adumatta",
+                "message": "Hello, hope you are well. Please find attatched our love.",
+                "data": pretemplateBody
+            }
+            return render_template(f'email/{templateId}.html', body=templateBody)
+        else:
+            print(form.errors)
+
+    return render_template('email/email_details.html', form=form, template=templateId, templateId=templateId)
+
+
+# class WordpressPost:
+#     def __init__(self, id, title, content, date, author, image):
+#         self.id = id
+#         self.title = title
+#         self.content = content
+#         self.date = date
+#         self.author = author
+#         self.image = image
+        
+def getMetaData(id):
+    # Get URL
+    url = cuwebBaseUrl + "/?rest_route=/wp/v2/posts/" + str(id)
+    print(url)
+    r = requests.get(url)
+    content = r.json()
+    # print(content)
+    # print(content[0])
+    return ({"rendered_content":content})
+
+def getImageUrl(id):
+    print(id)
+    try:
+        url = cuwebBaseUrl + "/?rest_route=/wp/v2/media/" + str(id)
+        r = requests.get(url)
+        print(r)
+        image = r.json()["guid"]["rendered"]
+    except Exception as e:
+        print(e)
+        image = "https://banner2.cleanpng.com/20190216/fox/kisspng-central-university-ghana-technology-university-col-school-of-theology-amp-missions-central-univer-5c67c799ec2858.1783459915503051779673.jpg"
+    return image
+
+def news():
+    page = request.args.get("page", "1")
+    print("page")
+    print(page)
+    # Get URL
+    id = 24
+    per_page = 30
+    url = (
+        baseWpUrl
+        + "/wp-json/wp/v2/posts?page="
+        + str(page)
+        + "&categories="
+        + str(id)
+        + "&per_page="
+        + str(per_page)
+    )
+    # url = "http://45.222.128.105/wp-json/wp/v2/posts?categories="+str(id)
+    r = requests.get(url)
+    response = r.json()
+    print("response.headers")
+    print(r.headers)
+    totalPages = r.headers["x-wp-totalpages"]
+    news = []
+    for i in response:
+        article = {}
+        article["id"] = i["id"]
+        article["image"] = getImageUrl(i["featured_media"])
+        article["title"] = i["title"]["rendered"]
+        article["date"] = i["date"]
+        article["author"] = getAuthorName(i["author"])
+        news.append(article)
+    print(news)
+    return render_template(
+        "news.html",
+        news=news,
+        totalPages=totalPages,
+        page=page,
+        per_page=per_page,
+        title="News & Blog",
+    )
 
 @app.route('/reset', methods=['GET', 'POST'])
 def reset():
@@ -788,6 +984,11 @@ def reset():
 @app.route('/thankyou', methods=['GET', 'POST'])
 def thankyou():
     return render_template('email/thankyou.html')
+
+@app.route('/election')
+def election():
+    return render_template('email/election.html')
+
 
 @app.route('/survey', methods=['GET', 'POST'])
 def survey():
@@ -1361,20 +1562,56 @@ def internal_server_error(error):
     return render_template('500.html'), 500
 
 
+# @app.route('/foomail', methods=['GET', 'POST'])
+# def foomail():
+#     if request.method == 'POST':
+#         body = request.json
+
+#         templateId = body.get("templateId", "dynamic")
+#         # For other templates, render with the provided body data
+#         html_content = render_template(f'email/{templateId}.html', body=body.get("templateBody"))
+
+#         # Send the email
+#         title = body.get("title", "No Title")
+#         subject = body.get("subject", "No Subject")
+#         receivers = body.get("receivers", [])
+#         bcc_receivers = body.get("bcc", [])
+
+#         sendAnEmail(title, subject, html_content, receivers, bcc_receivers)
+
+
+
+#         return "Email sent successfully!"
+#     else:
+#         return "This endpoint only supports POST requests."
+    
+
 @app.route('/foomail', methods=['GET', 'POST'])
 def foomail():
-    print("REQUEST")
-    print(request )
     if request.method == 'POST':
         body = request.json
-        pprint.pprint(body)
 
-        templateId = body.get("templateId","dynamic")
-    
-        html_content =  render_template(f'email/{templateId}.html', body = body.get("templateBody") )
-        return sendAnEmail(body.get("title"), body.get("subject"), html_content, body.get("receivers"))
-    else:
-        return "Bruh."
+        # takes in body
+        response = sendTemplateEmail(body)
+        return jsonify(response)
+# function 
+
+def sendTemplateEmail(body):
+    templateId = body.get("templateId", "dynamic")
+
+    # For other templates, render with the provided body data
+    html_content = render_template(f'email/{templateId}.html', body=body.get("templateBody"))
+
+    # Send the email
+    title = body.get("title", "No Title")
+    subject = body.get("subject", "No Subject")
+    # receivers = body.get("receivers", [])
+    receivers = body.get("receivers", [])
+    bcc_receivers = body.get("bcc", [])
+
+    emailResponse = sendAnEmail(title, subject, html_content, receivers, bcc_receivers)
+
+    return emailResponse
 
 # route to take a csv loop throught each line
 @app.route('/dynamic_csv', methods=['GET', 'POST'])
@@ -1447,13 +1684,18 @@ def sendAnEmail(title, subject, html_content, email_receiver, bcc_receivers=None
     em = EmailMessage()
     em["From"] = f"{title} <{email_sender}>"
     em["To"] = email_receiver
+    # em["To"] = ", ".j÷oin(email_receiver)
     em["Subject"] = subject
+    em["Bcc"] = 'prestoghana@gmail.com'
 
-    if bcc_receivers:
-        if isinstance(bcc_receivers, list):
-            em["Bcc"] = ", ".join(bcc_receivers)
-        else:
-            raise TypeError("bcc_receivers must be a list of email addresses")
+    # if bcc_receivers:
+    #     if isinstance(bcc_receivers, list):
+    #         em["Bcc"] = ", ".join(bcc_receivers)
+    #         print("bcc_receievers")
+    #         print(bcc_receivers)
+    #     else:
+    #         print("bcc_receivers must be a list of email addresses")
+    #         raise TypeError("bcc_receivers must be a list of email addresses")
 
     em.set_content("")
     em.add_alternative(html_content, subtype="html")
@@ -1473,12 +1715,21 @@ def sendAnEmail(title, subject, html_content, email_receiver, bcc_receivers=None
 
     server = smtplib.SMTP_SSL(smtp_server, port)
     server.login(email_sender, email_password)
+    # all_recipients = email_receiver
     all_recipients = [email_receiver] + (bcc_receivers if bcc_receivers else [])
+    print('all_recipients')
+    print(all_recipients)
     server.sendmail(email_sender, all_recipients, em.as_string())
     server.quit()
-    return "Done!"
+    return {
+        "recipeints":all_recipients, 
+        "message":"Email sent successfully"
+        }
 
-def fetch_metadata(url):
+@app.route('/fetch-metadata', methods=['POST'])
+def fetch_metadata(url=None):
+    if url is None:
+        url = request.json.get('url')
     try:
         response = requests.get(url)
         response.raise_for_status()  # Check if the request was successful
@@ -1495,11 +1746,16 @@ def fetch_metadata(url):
         keywords = soup.find('meta', attrs={'name': 'keywords'})
         keywords = keywords['content'] if keywords else 'No keywords found'
 
+        # Fetch the meta image
+        meta_image = soup.find('meta', property='og:image')
+        image_url = meta_image['content'] if meta_image else 'No image found'
+
         return {
             'url': url,
             'title': title,
             'description': description,
-            'keywords': keywords
+            'keywords': keywords,
+            'image': image_url
         }
     
     except requests.exceptions.RequestException as e:
@@ -1514,6 +1770,17 @@ def fetch_metadata_from_urls(urls):
         metadata = fetch_metadata(url)
         metadata_list.append(metadata)
     return metadata_list
+
+    # metadata = fetch_metadata_from_urls(urls)
+    # for data in metadata:
+    #     print(f"URL: {data['url']}")
+    #     if 'error' in data:
+    #         print(f"Error: {data['error']}")
+    #     else:
+    #         print(f"Title: {data['title']}")
+    #         print(f"Description: {data['description']}")
+    #         print(f"Keywords: {data['keywords']}")
+    #     print('-' * 80)
 
 
 

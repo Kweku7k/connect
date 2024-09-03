@@ -1,0 +1,315 @@
+{% extends "layout.html" %}
+
+{% block body %}
+<div class="container">
+
+<form action="" method="post">
+    {{form.hidden_tag()}}
+    <div class="flexBar" style="margin:3vh 0;">
+    <div >
+      <h4>Email Templates Details</h4>
+      <!-- <h6 class="text-muted">{{groupCount}} groups</h6> -->
+  </div>
+
+  <!-- <a href="{{url_for(template, id=templateId)}}">
+    <button data-bs-toggle="modal" data-bs-target="#staticBackdrop" class="pill-button">Preview</button>
+  </a> -->
+
+    {{form.submit (class="pill-button", onclick="showLoadingScreen()")}}
+
+    </div>
+
+    <div class="row">
+      <div class="col-md-6">
+        <div class="defaultCard">
+            
+                <h6>Send a quick email to your group</h6>
+
+                <div class="row">
+                    <div class="col">
+                        <div class="inputTextHolder">
+                            <h6>{{form.templateid.label}}</h6>
+                            {{form.templateid (class="inputTextCard", placeholder="Enter your message.")}}
+                            {% for error in form.templateid.errors %}
+                            <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="col">
+
+                        <div class="inputTextHolder">
+                            <h6>{{form.group.label}}</h6>
+                            {{form.group (class="inputTextCard", placeholder="Enter your message.")}}
+                            {% for error in form.group.errors %}
+                            <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="inputTextHolder">
+                    <h6>{{form.title.label}}</h6>
+                    {{form.title (class="inputTextCard", placeholder="Enter your message.")}}
+                    {% for error in form.title.errors %}
+                    <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+                    {% endfor %}
+                </div>
+                
+                <div class="inputTextHolder">
+                    <h6>{{ form.allpostId.label }}</h6>
+                    {{ form.allpostId(class="inputTextCard", id="allpostIdInput", placeholder="Enter your message.") }}
+                    {% for error in form.allpostId.errors %}
+                        <h6 style="color: red; font-weight: 100;">{{ error }}</h6>
+                    {% endfor %}
+                </div>
+
+                <div class="inputTextHolder">
+                    <h6>{{form.subject.label}}</h6>
+                    {{form.subject (class="inputTextCard", placeholder="Enter your message.")}}
+                    {% for error in form.subject.errors %}
+                    <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+                    {% endfor %}
+                </div>
+
+                <div class="inputTextHolder">
+                    <h6>{{form.message.label}}</h6>
+                    {{form.message (class="inputTextCard",id="messageInput", placeholder="Enter your message.")}}
+                    {% for error in form.message.errors %}
+                    <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+                    {% endfor %}
+                </div>
+                
+
+            </br>
+                <!-- {{form.submit (class="pill-button", style="width:100%", onclick="showLoadingScreen()")}} -->
+        </div>
+      </div>
+
+      <div class="col-md-6">
+        <div class="defaultCard">
+            <form action="">
+                {{form.hidden_tag()}}
+                <h6>Send a quick email to your group</h6>
+
+                <div class="inputTextHolder">
+                    <div class="row align-items-center">
+                        <label for="">Post Id</label>
+                        <div class="col-md-10">
+                            <div class="form-group">
+                              <input type="text"
+                                class="form-control inputTextCard" id="wpurlinput" name="" id="" value="https://blog.prestovotes.com/2024/08/28/tips-to-leverage-affiliate-marketing-and-increase-revenue/" aria-describedby="helpId" placeholder="Enter your wordpress url">
+                            </div>
+                        </div>
+                        <div class="col-md-2 d-flex justify-content-end align-items-end">
+                            <a id="addButton" class="pill-button" onclick="fetchMetadata()" role="button">Add</a>
+                        </div>
+                    </div>
+
+                    <div id="cardContainer"></div>
+                    </div>
+                
+                
+        
+            </form>
+        </div>
+      </div>
+      
+    </div>
+</form>
+</div>
+
+  <script>
+let wparray = []
+function fetchMetadata() {
+    var urlInput = document.getElementById('wpurlinput');
+    var url = urlInput.value;
+
+    //TODO: convert button to spool
+    // TODO: delete button == delete from the array and call the update
+    
+
+    fetch('/fetch-metadata', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url: url }),
+    })
+    .then(response => response.json())
+    .then(data => {
+
+        if (checkArray(data, wparray) == true){
+            // check if url already exists
+            formField = document.getElementById("messageInput")
+            console.log("FormField: ")
+            console.log(formField)
+
+            const cardContainer = document.getElementById('cardContainer');
+
+            if (convertArrayToFormField(wparray,formField)){
+                // I WANT TO UPDATE THIS INSTEAD
+                // createCard(data,cardContainer)
+                updateCard(wparray,data,cardContainer)
+            }
+            
+
+            // empty the url field when done.
+            urlInput.value = '';
+
+        }
+
+        }
+
+    )
+    .catch(error => console.error('Error:', error));
+}
+
+function checkArray(newValue, array){
+if (!array.includes(newValue)) {
+    console.log("Item is being added to array")
+    array.push(newValue)
+    console.log("array")
+    console.log(array)
+    return true
+
+} else {
+    console.log("Item already exists")
+    return false
+}
+}
+
+function convertArrayToFormField(array, formField){
+    try {
+        console.log(array)
+        console.log('formField')
+        console.log(formField)
+        formField.value = JSON.stringify(array)
+        console.log("URL HAS BEEN CONVERTED TO FORM ENTRY:")
+        console.log(formField)
+        console.log(array)
+        return true
+    } catch (error) {
+        return true
+    }
+}
+
+function updateCard(array, data,cardContainer){
+    // Empty Card
+    cardContainer.innerHTML = ''
+
+    array.forEach(element => {
+        createCard(element,cardContainer)
+    });
+}
+
+function createCard(data, cardContainer){
+
+    const newCard = document.createElement('div');
+    newCard.className = 'defaultCard';
+
+    newCard.innerHTML = `
+        <p><strong>${data.title}</strong> </p>
+        <p> ${data.description}</p>
+    `;
+
+    cardContainer.appendChild(newCard);
+}
+// function createCard() {
+// // Create new card div
+//     const cardContainer = document.getElementById('cardContainer');
+
+//     const newCard = document.createElement('div');
+//     newCard.className = 'defaultCard';
+
+//     newCard.innerHTML = `
+//         <div class="card-body" style="padding: 10px;">
+//             <div class="d-flex justify-content-between align-items-center">
+//                 <p class="card-text mb-0" style="flex: 1;">Post ID: ${postId}</p>
+//                 <button class="btn btn-danger btn-sm delete-button" data-id="${postId}">
+//                     <i class="fas fa-trash-alt"></i> Delete
+//                 </button>
+//             </div>
+//         </div>
+//     `;
+
+//     // Append the new card to the container
+//     cardContainer.appendChild(newCard);
+//     }
+
+</script>
+
+
+
+<!-- <script>
+    document.getElementById('addButton').addEventListener('click', function(event) {
+        event.preventDefault(); // Prevent page reload
+    
+        // Get the WordPress Post URL entered by the user
+        let postUrl = document.getElementById('wpurlinput').value;
+    
+        // Extract the Post ID (assuming it's the last part of the URL)
+        let postId = postUrl.split('/').filter(Boolean).pop();
+    
+        if (postId) {
+            // Retrieve any existing Post IDs from sessionStorage
+            let storedPostIds = JSON.parse(sessionStorage.getItem('postIds')) || [];
+    
+            // Add the new postId to the array
+            storedPostIds.push(postId);
+    
+            // Save the updated array back to sessionStorage
+            sessionStorage.setItem('postIds', JSON.stringify(storedPostIds));
+    
+            // Update the allpostId input field with the new list of Post IDs
+            document.getElementById('allpostIdInput').value = storedPostIds.join(', ');
+    
+            addCard(postId); // Optional: add the card to the card container
+            
+        } else {
+            alert("Invalid URL or Post ID not found.");
+        }
+    });
+    
+    function addCard(postId) {
+        const cardContainer = document.getElementById('cardContainer');
+    
+        // Create new card div
+        const newCard = document.createElement('div');
+        newCard.className = '';
+    
+        newCard.innerHTML = `
+            <div class="card-body" style="padding: 10px;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <p class="card-text mb-0" style="flex: 1;">Post ID: ${postId}</p>
+                    <button class="btn btn-danger btn-sm delete-button" data-id="${postId}">
+                        <i class="fas fa-trash-alt"></i> Delete
+                    </button>
+                </div>
+            </div>
+        `;
+    
+        // Append the new card to the container
+        cardContainer.appendChild(newCard);
+    
+        newCard.querySelector('.delete-button').addEventListener('click', function() {
+            removeCard(postId, newCard);
+        });
+    }
+    
+    function removeCard(postId, cardElement) {
+        // Remove the card from the DOM
+        cardElement.remove();
+    
+        // Remove the postId from sessionStorage
+        let storedPostIds = JSON.parse(sessionStorage.getItem('postIds')) || [];
+        storedPostIds = storedPostIds.filter(id => id !== postId);
+        sessionStorage.setItem('postIds', JSON.stringify(storedPostIds));
+    
+        // Update the allpostId input field
+        document.getElementById('allpostIdInput').value = storedPostIds.join(', ');
+    
+        alert(`Post ID ${postId} removed from local storage!`);
+    }
+</script> -->
+{% endblock %}

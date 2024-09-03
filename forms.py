@@ -11,10 +11,12 @@ class BroadcastForm(FlaskForm):
 
 class BroadcastEmailForm(FlaskForm):
     group = SelectField('Group', choices=[('All Contacts - 30 contacts')])
+    templateid = SelectField('Template', choices=[('1', 'Template 1'), ('2', 'Template 2'), ('3', 'Template 3')])
     title = StringField('Title', validators=[DataRequired()])
+    allpostId = StringField('PostId')
     subject = StringField('Subject',validators=[DataRequired()])
     message = StringField('Message',widget=TextArea(), validators=[DataRequired()])
-    submit = SubmitField('Broadcast')
+    submit = SubmitField('Preview')
 
 class AddUserForm(FlaskForm):
     group = SelectField('Group', choices=[('All Contacts - 30 contacts')])
