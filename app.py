@@ -1590,6 +1590,7 @@ def internal_server_error(error):
 def foomail():
     if request.method == 'POST':
         body = request.json
+        print(body)
 
         # takes in body
         response = sendTemplateEmail(body)
