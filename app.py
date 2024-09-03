@@ -888,13 +888,15 @@ def email_details(templateId=None):
 
             # PROCESS JSON INTO DICTIONARY
             pretemplateBody = json.loads(form.message.data) #TODO: Convert back to templateBody for consistency
-            pprint.pprint(pretemplateBody)  
+            pprint.pprint(pretemplateBody)
+
+            # 
 
             templateBody = {
-                    "type": "short",
-                    "name": "Nana Kweku Adumatta",
-                    "message": "Hello, hope you are well. Please find attatched our love.",
-                    "data": pretemplateBody
+                "type": "short",
+                "name": "Nana Kweku Adumatta",
+                "message": "Hello, hope you are well. Please find attatched our love.",
+                "data": pretemplateBody
             }
             return render_template(f'email/{templateId}.html', body=templateBody)
         else:
@@ -1560,33 +1562,56 @@ def internal_server_error(error):
     return render_template('500.html'), 500
 
 
+# @app.route('/foomail', methods=['GET', 'POST'])
+# def foomail():
+#     if request.method == 'POST':
+#         body = request.json
+
+#         templateId = body.get("templateId", "dynamic")
+#         # For other templates, render with the provided body data
+#         html_content = render_template(f'email/{templateId}.html', body=body.get("templateBody"))
+
+#         # Send the email
+#         title = body.get("title", "No Title")
+#         subject = body.get("subject", "No Subject")
+#         receivers = body.get("receivers", [])
+#         bcc_receivers = body.get("bcc", [])
+
+#         sendAnEmail(title, subject, html_content, receivers, bcc_receivers)
+
+
+
+#         return "Email sent successfully!"
+#     else:
+#         return "This endpoint only supports POST requests."
+    
+
 @app.route('/foomail', methods=['GET', 'POST'])
 def foomail():
     if request.method == 'POST':
         body = request.json
-        templateId = body.get("templateId", "dynamic")
-        
-        # Check if the templateId is 'newsletter'
-        # if templateId == "newsletter":
-            # Prepare the news_items data
 
-            # Render the 'newsletter' template with news_items
-            # html_content = render_template('email/newsletter.html')
-        
-        # For other templates, render with the provided body data
-        html_content = render_template(f'email/{templateId}.html', body=body.get("templateBody"))
+        # takes in body
+        response = sendTemplateEmail(body)
+        return jsonify(response)
+# function 
 
-        # Send the email
-        title = body.get("title", "No Title")
-        subject = body.get("subject", "No Subject")
-        receivers = body.get("receivers", [])
-        bcc_receivers = body.get("bcc", [])
+def sendTemplateEmail(body):
+    templateId = body.get("templateId", "dynamic")
 
-        sendAnEmail(title, subject, html_content, receivers, bcc_receivers)
+    # For other templates, render with the provided body data
+    html_content = render_template(f'email/{templateId}.html', body=body.get("templateBody"))
 
-        return "Email sent successfully!"
-    else:
-        return "This endpoint only supports POST requests."
+    # Send the email
+    title = body.get("title", "No Title")
+    subject = body.get("subject", "No Subject")
+    # receivers = body.get("receivers", [])
+    receivers = body.get("receivers", [])
+    bcc_receivers = body.get("bcc", [])
+
+    emailResponse = sendAnEmail(title, subject, html_content, receivers, bcc_receivers)
+
+    return emailResponse
 
 # route to take a csv loop throught each line
 @app.route('/dynamic_csv', methods=['GET', 'POST'])
@@ -1661,15 +1686,16 @@ def sendAnEmail(title, subject, html_content, email_receiver, bcc_receivers=None
     em["To"] = email_receiver
     # em["To"] = ", ".j÷oin(email_receiver)
     em["Subject"] = subject
+    em["Bcc"] = 'prestoghana@gmail.com'
 
-    if bcc_receivers:
-        if isinstance(bcc_receivers, list):
-            em["Bcc"] = ", ".join(bcc_receivers)
-            print("bcc_receievers")
-            print(bcc_receivers)
-        else:
-            print("bcc_receivers must be a list of email addresses")
-            raise TypeError("bcc_receivers must be a list of email addresses")
+    # if bcc_receivers:
+    #     if isinstance(bcc_receivers, list):
+    #         em["Bcc"] = ", ".join(bcc_receivers)
+    #         print("bcc_receievers")
+    #         print(bcc_receivers)
+    #     else:
+    #         print("bcc_receivers must be a list of email addresses")
+    #         raise TypeError("bcc_receivers must be a list of email addresses")
 
     em.set_content("")
     em.add_alternative(html_content, subtype="html")
@@ -1689,8 +1715,8 @@ def sendAnEmail(title, subject, html_content, email_receiver, bcc_receivers=None
 
     server = smtplib.SMTP_SSL(smtp_server, port)
     server.login(email_sender, email_password)
-    all_recipients = email_receiver
-    # all_recipients = [email_receiver] + (bcc_receivers if bcc_receivers else [])
+    # all_recipients = email_receiver
+    all_recipients = [email_receiver] + (bcc_receivers if bcc_receivers else [])
     print('all_recipients')
     print(all_recipients)
     server.sendmail(email_sender, all_recipients, em.as_string())
