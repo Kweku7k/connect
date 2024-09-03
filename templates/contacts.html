@@ -55,6 +55,42 @@
     {% endfor %}
   </div>
 
+    <!-- Pagination Controls -->
+    <div class="pagination">
+      {% if contactlist.has_prev %}
+          <a href="{{ url_for('contacts', slug=slug, page=contactlist.prev_num) }}">Previous</a>
+      {% endif %}
+
+      {% for p in range(1, contactlist.pages + 1) %}
+          {% if p == contactlist.page %}
+              <strong>{{ p }}</strong>
+          {% else %}
+              <a href="{{ url_for('contacts', slug=slug, page=p) }}">{{ p }}</a>
+          {% endif %}
+      {% endfor %}
+
+      {% if contactlist.has_next %}
+          <a href="{{ url_for('contacts', slug=slug, page=contactlist.next_num) }}">Next</a>
+      {% endif %}
+  </div>
+  <!-- Pagination Controls -->
+  <div class="pagination">
+    {% if contactlist.has_prev %}
+        <a href="{{ url_for('contacts', slug=slug, page=contactlist.prev_num) }}">Previous</a>
+    {% endif %}
+
+    {% for p in range(1, contactlist.pages + 1) %}
+        {% if p == contactlist.page %}
+            <strong>{{ p }}</strong>
+        {% else %}
+            <a href="{{ url_for('contacts', slug=slug, page=p) }}">{{ p }}</a>
+        {% endif %}
+    {% endfor %}
+
+    {% if contactlist.has_next %}
+        <a href="{{ url_for('contacts', slug=slug, page=contactlist.next_num) }}">Next</a>
+    {% endif %}
+</div>
 
 </div>
 <div class="modal fade" id="deleteModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">

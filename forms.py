@@ -15,7 +15,7 @@ class BroadcastEmailForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired()])
     allpostId = StringField('PostId')
     subject = StringField('Subject',validators=[DataRequired()])
-    message = StringField('Message',widget=TextArea(), validators=[DataRequired()])
+    message = StringField('Message',widget=TextArea())
     submit = SubmitField('Preview')
 
 class AddUserForm(FlaskForm):

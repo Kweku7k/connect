@@ -17,6 +17,7 @@ from bs4 import BeautifulSoup
 import json
 from functools import wraps
 import jwt
+from utils import *
 
 from forms import *
 # from flask_login import UserMixin, login_user, logout_user, current_user, LoginManager, login_required
@@ -215,6 +216,14 @@ class Contacts(db.Model):
     def __repr__(self):
         return f"Contact('id: {self.appId}-{self.id}', 'name:{self.name}', 'phoneNumber:{self.phoneNumber}')"
   
+    # function to get all emails filter by appId and return as an array
+    @staticmethod
+    def get_all_emails(groupId):
+        emails = Contacts.query.filter_by(groupId=groupId).all()
+        email_array = []
+        for email in emails:
+            email_array.append(email.email)
+        return email_array
 
 class Message(db.Model):
     tablename = ['Message']
@@ -734,9 +743,14 @@ def dashboard():
 @app.route('/contacts/<int:slug>', methods=['GET', 'POST'])
 @token_required
 def contacts(slug = None):
+    # Set the number of items per page
+    per_page = 10
+
+    # Get the current page number from the request arguments; default to 1
+    page = request.args.get('page', 1, type=int)
     current_user = get_current_user()
     if slug:
-        contactlist = Contacts.query.filter_by(groupId=slug, appId=current_user.appId).all()
+        contactlist = Contacts.query.filter_by(groupId=slug, appId=current_user.appId).paginate(page=page, per_page=per_page)
         count = Contacts.query.filter_by(groupId=slug, appId=current_user.appId).count()
         group = Groups.query.get_or_404(slug)
 
@@ -747,11 +761,11 @@ def contacts(slug = None):
             reportError(e)
 
     else:
-        contactlist = Contacts.query.filter_by(appId=current_user.appId).all()
+        contactlist = Contacts.query.filter_by(appId=current_user.appId).paginate(page=page, per_page=per_page)
         count = Contacts.query.filter_by(appId=current_user.appId).count()
         group = None
     
-    return render_template('contacts.html', current_user=current_user, contactlist=contactlist, count=count, group=group, loadingMessage="Please wait while we process your request, this may take some time." )
+    return render_template('contacts.html', slug=slug, current_user=current_user, contactlist=contactlist, count=count, group=group, loadingMessage="Please wait while we process your request, this may take some time." )
 
 @app.route('/issue', methods=['GET', 'POST'])
 def issue():
@@ -873,36 +887,55 @@ def convetIdToPost(idArray):
         posts.append(post)
     return posts
         
-        
     
 
 @app.route('/email_details', methods=['GET', 'POST'])
 @app.route('/email_details/<string:templateId>', methods=['GET', 'POST'])
 def email_details(templateId=None):
     form = BroadcastEmailForm()
-    templateId = "newsletter"
+    templateId = "election"
+
+    form.group.choices = [ (group.id, f"{group.name} - {group.total} contacts" )for group in Groups.query.all()]
+    form.templateid.choices = [ (template) for template in fetchEmailtemplate()]
+
+    # create a temporary id
+    # save to session
+    # do a blast and create a report.
 
     # preview function should return an html render in a new opage
     if request.method == 'POST':
         if form.validate_on_submit(): 
+            group = Groups.query.get_or_404(form.group.data)
+            # emails = Contacts.get_all_emails(group.id)
 
             # PROCESS JSON INTO DICTIONARY
             pretemplateBody = json.loads(form.message.data) #TODO: Convert back to templateBody for consistency
             pprint.pprint(pretemplateBody)
 
-            # 
+            
 
             templateBody = {
                 "type": "short",
-                "name": "Nana Kweku Adumatta",
-                "message": "Hello, hope you are well. Please find attatched our love.",
+                "groupId":form.group.data,
+                "templateId":templateId,
+                "title": form.title.data,
+                "subject": form.subject.data,
+                "name": "PRESTO CONNECT",
+                "receivers":["connect@prestoghana.com"],
+                "bcc": [],
+                "message": "PRESTO CONNECT",
                 "data": pretemplateBody
             }
-            return render_template(f'email/{templateId}.html', body=templateBody)
+            
+            # CREATE TEMPORARY BODY 
+
+            session['temporaryBody'] = templateBody
+            pprint.pprint(templateBody)
+            return render_template(f'email/{templateId}.html', body=templateBody, local=True)
         else:
             print(form.errors)
 
-    return render_template('email/email_details.html', form=form, template=templateId, templateId=templateId)
+    return render_template('email/email_details.html', groups=groups, form=form, template=templateId, templateId=templateId)
 
 
 # class WordpressPost:
@@ -1119,7 +1152,7 @@ def upload_file():
                     # check if phone number already exists
                     # findExistingPhoneNumber()
                     
-                    newcontact = Contacts(name=row[0], phoneNumber=convertToPhoneNumber(row[1]), appId=appId, slug=slug, groupId=newgroup.id)
+                    newcontact = Contacts(name=row[0], phoneNumber=convertToPhoneNumber(row[1]), appId=appId, slug=slug, groupId=newgroup.id, email=row[2])
                     try:
                         db.session.add(newcontact)
                     except Exception as e:
@@ -1365,7 +1398,7 @@ def new(groupId=None):
         print(form.data)
         if form.validate_on_submit():
             try:
-                newContact = Contacts(name=form.name.data, phoneNumber=form.phone.data, appId=current_user.appId, slug="slug", groupId = form.group.data )
+                newContact = Contacts(name=form.name.data, phoneNumber=form.phone.data, email=form.email.data, appId=current_user.appId, slug="slug", groupId = form.group.data )
                 db.session.add(newContact)
                 db.session.commit()
                 flash(f'New Contact: {newContact.name} has been added to this group!')
@@ -1586,6 +1619,18 @@ def internal_server_error(error):
 #         return "This endpoint only supports POST requests."
     
 
+@app.route('/email_preview', methods=['GET', 'POST'])
+def email_preview():
+    body = session['temporaryBody']
+    # pprint.pprint(body)
+    body['bcc'] = Contacts.get_all_emails(int(body['groupId']))
+    pprint.pprint(body)
+    # response = body
+    response = sendTemplateEmail(body)
+    return jsonify(response)
+
+
+
 @app.route('/foomail', methods=['GET', 'POST'])
 def foomail():
     if request.method == 'POST':
@@ -1606,11 +1651,13 @@ def sendTemplateEmail(body):
     # Send the email
     title = body.get("title", "No Title")
     subject = body.get("subject", "No Subject")
+    
     # receivers = body.get("receivers", [])
     receivers = body.get("receivers", [])
     bcc_receivers = body.get("bcc", [])
 
     emailResponse = sendAnEmail(title, subject, html_content, receivers, bcc_receivers)
+    print(emailResponse)
 
     return emailResponse
 
@@ -1687,16 +1734,16 @@ def sendAnEmail(title, subject, html_content, email_receiver, bcc_receivers=None
     em["To"] = email_receiver
     # em["To"] = ", ".j÷oin(email_receiver)
     em["Subject"] = subject
-    em["Bcc"] = 'prestoghana@gmail.com'
+    # em["Bcc"] = 'prestoghana@gmail.com'
 
-    # if bcc_receivers:
-    #     if isinstance(bcc_receivers, list):
-    #         em["Bcc"] = ", ".join(bcc_receivers)
-    #         print("bcc_receievers")
-    #         print(bcc_receivers)
-    #     else:
-    #         print("bcc_receivers must be a list of email addresses")
-    #         raise TypeError("bcc_receivers must be a list of email addresses")
+    if bcc_receivers:
+        if isinstance(bcc_receivers, list):
+            em["Bcc"] = ", ".join(bcc_receivers)
+            print("bcc_receievers")
+            print(bcc_receivers)
+        else:
+            print("bcc_receivers must be a list of email addresses")
+            raise TypeError("bcc_receivers must be a list of email addresses")
 
     em.set_content("")
     em.add_alternative(html_content, subtype="html")

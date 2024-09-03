@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Election Email Template</title>
     <style>
         body {
@@ -73,6 +74,12 @@
         <!-- Banner image -->
         <img src="https://firebasestorage.googleapis.com/v0/b/ineruu-142dc.appspot.com/o/ineruu-142dc-default-rtdb%2FImages%2Fjept.jpg1725105181935.jpg?alt=media&token=6dee7f71-8e7a-4e5b-955e-3d1a567af028/600x200" alt="Banner Image" class="banner">
 
+        {% if local %}
+        <a href="{{url_for('email_preview')}}">
+            <button>Send Email</button>
+        </a>
+        {% endif %}
+       
         <div class="email-body">
             <h1>Attention, Students!</h1>
             <p>Team Jephthah is excited to announce a new partnership with SIC to offer comprehensive student insurance for your gadgets! Now, your devices are protected against theft and damages, giving you peace of mind while you focus on your studies.</p>
