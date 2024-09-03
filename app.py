@@ -864,11 +864,6 @@ def email_templates():
         "title" : "Newsletter",
         "url":  "newsletter",
         "img" :"https://cdn.dribbble.com/userupload/14695577/file/original-93441cc40aba53310e95e95ecb6424a6.png?resize=1504x1128"
-        },
-        {
-        "title" : "Reset",
-        "url":  "cureset",
-        "img" :"https://cdn.dribbble.com/users/2879528/screenshots/11007898/media/02a3ee1367c85fbf8ee060614cb97fb0.jpeg?resize=1600x1200&vertical=center"
         }
     ]
     return render_template('email/email_templates.html', templates= templates)
