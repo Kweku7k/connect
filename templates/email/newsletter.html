@@ -39,7 +39,6 @@
             color: rgba(25,25,25,1);
         }
         .header img {
-            width: 200px;
             border-radius: 8px;
             margin-bottom: 5px;
         }
@@ -172,13 +171,16 @@
 
     <div class="container">
         {% if local %}
-        <h4>yes</h4>
+        <a href="{{url_for('email_preview')}}">
+            <button class="pill-button">
+                Send Email!
+            </button>
+        </a>
         {% else %}
-        <h4>no</h4>
         {% endif %}
         <div class="header">
-            <img src="https://www.central.edu.gh/static/img/ogLogo.png" alt="Central University Logo">
-            <h1>The Reporter</h1>
+            <img width="100%" src="https://firebasestorage.googleapis.com/v0/b/ineruu-142dc.appspot.com/o/ineruu-142dc-default-rtdb%2FImages%2FWhatsApp%20Image%202024-10-01%20at%2009.58.48.jpeg1727776877013.jpg?alt=media&token=8739c49b-e145-45e0-867f-7f24ac608006" alt="Central University Logo">
+            <h1>CU NEWS</h1>
             <p>
                 Bringing you the Latest News and Updates. Connect with us, via our social media links below.</a>
             </p>
@@ -206,7 +208,7 @@
 
             {% for item in body.data %}
             <div class="news-item">
-                    <a href="{{item.link}}">
+                    <a href="{{item.url}}">
                     <img src="{{ item.image }}" alt="image">
                     <!-- <h4>{{item.category}}</h4> -->
                     <h2>{{item.title}}</h2>

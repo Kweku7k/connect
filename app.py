@@ -892,8 +892,10 @@ def convetIdToPost(idArray):
 @app.route('/email_details', methods=['GET', 'POST'])
 @app.route('/email_details/<string:templateId>', methods=['GET', 'POST'])
 def email_details(templateId=None):
+
     form = BroadcastEmailForm()
-    templateId = "election"
+    # templateId = "dynamic"
+    templateId = "newsletter" 
 
     form.group.choices = [ (group.id, f"{group.name} - {group.total} contacts" )for group in Groups.query.all()]
     form.templateid.choices = [ (template) for template in fetchEmailtemplate()]
@@ -908,16 +910,18 @@ def email_details(templateId=None):
             group = Groups.query.get_or_404(form.group.data)
             # emails = Contacts.get_all_emails(group.id)
 
+            templateId = form.templateid.data
+
+
             # PROCESS JSON INTO DICTIONARY
             pretemplateBody = json.loads(form.message.data) #TODO: Convert back to templateBody for consistency
             pprint.pprint(pretemplateBody)
 
-            
-
+        
             templateBody = {
                 "type": "short",
                 "groupId":form.group.data,
-                "templateId":templateId,
+                "templateId":form.templateid.data,
                 "title": form.title.data,
                 "subject": form.subject.data,
                 "name": "PRESTO CONNECT",
@@ -931,7 +935,7 @@ def email_details(templateId=None):
 
             session['temporaryBody'] = templateBody
             pprint.pprint(templateBody)
-            return render_template(f'email/{templateId}.html', body=templateBody, local=True)
+            return render_template(f'email/{templateId}.html', body=templateBody, local=False)
         else:
             print(form.errors)
 
@@ -1622,7 +1626,8 @@ def internal_server_error(error):
 @app.route('/email_preview', methods=['GET', 'POST'])
 def email_preview():
     body = session['temporaryBody']
-    # pprint.pprint(body)
+    print("===email===body====")
+    pprint.pprint(body)
     body['bcc'] = Contacts.get_all_emails(int(body['groupId']))
     pprint.pprint(body)
     # response = body
@@ -1646,7 +1651,7 @@ def sendTemplateEmail(body):
     templateId = body.get("templateId", "dynamic")
 
     # For other templates, render with the provided body data
-    html_content = render_template(f'email/{templateId}.html', body=body.get("templateBody"))
+    html_content = render_template(f'email/{templateId}.html', body=body)
 
     # Send the email
     title = body.get("title", "No Title")
@@ -1789,6 +1794,8 @@ def fetch_metadata(url=None):
         # Fetching meta description
         description = soup.find('meta', attrs={'name': 'description'})
         description = description['content'] if description else 'No description found'
+        description = description.replace("<p>","")
+        description = description.replace("</p>","")
 
         # Fetching meta keywords
         keywords = soup.find('meta', attrs={'name': 'keywords'})
@@ -1800,6 +1807,7 @@ def fetch_metadata(url=None):
 
         return {
             'url': url,
+            'image': image_url,
             'title': title,
             'description': description,
             'keywords': keywords,
