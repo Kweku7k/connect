@@ -812,6 +812,10 @@ def booking():
 def cureset():
     return render_template('email/cureset.html')
 
+@app.route('/srp', methods=['GET', 'POST'])
+def srp():
+    return render_template('email/srp.html')
+
 @app.route('/newsletter', methods=['GET', 'POST'])
 def newsletter():
     # news_items = [
