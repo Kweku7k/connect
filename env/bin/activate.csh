@@ -8,7 +8,7 @@ alias deactivate 'test $?_OLD_VIRTUAL_PATH != 0 && setenv PATH "$_OLD_VIRTUAL_PA
 # Unset irrelevant variables.
 deactivate nondestructive
 
-setenv VIRTUAL_ENV "/Users/nanakweku/Documents/Projects/Presto/PrestoConnect/env"
+setenv VIRTUAL_ENV "/Users/nanakwekuadumatta/Documents/Projects/Presto/PrestoConnect/env"
 
 set _OLD_VIRTUAL_PATH="$PATH"
 setenv PATH "$VIRTUAL_ENV/bin:$PATH"

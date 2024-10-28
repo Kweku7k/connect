@@ -1641,6 +1641,7 @@ def foomail():
     if request.method == 'POST':
         body = request.json
         print(body)
+        pprint.pprint(body)
 
         # takes in body
         response = sendTemplateEmail(body)
