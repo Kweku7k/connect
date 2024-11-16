@@ -16,10 +16,10 @@ python3 -m venv $venv_name
 source $venv_name/bin/activate
 
 # Install dependencies from requirements.txt
-pip3 install -r requirements.txt
+pip3 install -r requirements2.txt
 
 # Install uwsgi
-pip install uwsgi
+# pip install uwsgi
 
 #Restart the forms application
 # sudo systemctl restart forms.service
