@@ -16,7 +16,7 @@ python3 -m venv $venv_name
 source $venv_name/bin/activate
 
 # Install dependencies from requirements.txt
-pip3 install -r requirements2.txt
+pip3 install -r required.txt
 
 # Install uwsgi
 pip install uwsgi
