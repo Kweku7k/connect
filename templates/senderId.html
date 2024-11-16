@@ -1,0 +1,74 @@
+{% extends "layout.html" %}
+
+{% block head %}
+
+{% endblock %}
+{% block body %}
+
+<div class="container">
+<div class="info-block" style="margin-top: 5vh;">
+
+    <div class="flexBar">
+        <div>
+            <h4>SenderId</h4>
+            <h6 class="text-muted">{{current_user.username}}</h6>
+        </div>
+
+        <a href="#request">
+            <button class="pill-button">Request Sender Id</button>
+        </a>
+
+    </div>
+    <br>
+    <div class="row" style="justify-content: space-around; margin-top: 5vh;">
+        <div class="col-md-6">
+            <div class="defaultCard">     
+                <h4>Available Sender Id</h4>
+                <p>This will allow recipients to easily identify the sender, ensuring trust and better communication efficiency.</p>
+
+                
+                <!-- Get all Sender Id for Current User -->
+                 <!-- TODO: -->
+                 <!-- Ah try extract just the senderId but he no work i am getting just the Array -->
+                <ul>
+                    {% for sid in all_sender_id %}
+                        <li>{{ sid }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+        <div class="col-md-6" id="request">
+            <div class="defaultCard">
+                <form action="" method="post">
+                    {{form.hidden_tag()}}
+                
+                <h4>Request Sender Id</h4>
+                <!-- <h6>This will allow recipients to easily identify the sender, ensuring trust and better communication efficiency.</h6> -->
+                
+                <div class="inputTextHolder">
+                    <h6>{{form.senderId.label}}</h6>
+                    {{form.senderId (class="inputTextCard", placeholder="Please enter your SenderId")}}
+                    {% for error in form.senderId.errors %}
+                    <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+                    {% endfor %}
+                </div>
+                
+                <div class="inputTextHolder">
+                    <h6>{{form.description.label}}</h6>
+                    {{form.description (class="inputTextCard", placeholder="Please enter a description")}}
+                    {% for error in form.description.errors %}
+                    <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+                    {% endfor %}
+                </div>
+
+                    {{form.submit(class="pill-button", style="width: 100%; margin-top:5vh;", onclick="showLoadingScreen()")}}
+                </form>
+
+            </div>
+        </div>
+        </div>
+    </div>
+</div>
+</div>
+
+{% endblock %}

@@ -52,3 +52,8 @@ class RegisterForm(FlaskForm):
     password = PasswordField('Password', validators=[Length(min=6)])
     confirm_password = PasswordField('Confirm Password', validators=[EqualTo('password', message='Your passwords dont match, please try again')])
     submit = SubmitField('Update')
+    
+class RequestSenderIdForm(FlaskForm):
+    senderId = StringField('Sender Id', validators=[DataRequired()])
+    description = StringField('Description', validators=[DataRequired()])
+    submit = SubmitField('Request SenderId')
