@@ -1324,16 +1324,16 @@ def sender_id():
 
     if request.method == 'POST':
         if form.validate_on_submit():
-            requestedSenderId = SenderId(
+            newSenderId = SenderId(
                 senderId=form.senderId.data,
                 slug=form.description.data,
                 appId=current_user.appId
             )
-            print(requestedSenderId)
-            # sendTelegram(requestedSenderId)
-            sendTelegram(message_text=requestedSenderId)
+            print(newSenderId)
+            requestedSenderId = f"{newSenderId.senderId} has been requested by {current_user.username}"
+            sendTelegram(message_text=requestedSenderId, chat_id=chat_id)
             flash(f'{form.senderId.data} has been requested!')
-            return redirect(url_for('sender_id'))
+            return redirect(url_for('dashboard'))
 
     return render_template('senderId.html', current_user=current_user, form=form, all_sender_id=all_sender_id)
 
