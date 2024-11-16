@@ -1315,6 +1315,28 @@ def createReport(reportBody, rawdata):
     # done.
     return "Done"
 
+
+@app.route('/sender_id', methods=['GET', 'POST'])
+def sender_id():
+    form = RequestSenderIdForm()
+    current_user = get_current_user()
+    all_sender_id = SenderId.query.filter_by(appId=current_user.appId).all(),
+
+    if request.method == 'POST':
+        if form.validate_on_submit():
+            requestedSenderId = SenderId(
+                senderId=form.senderId.data,
+                slug=form.description.data,
+                appId=current_user.appId
+            )
+            print(requestedSenderId)
+            # sendTelegram(requestedSenderId)
+            sendTelegram(message_text=requestedSenderId)
+            flash(f'{form.senderId.data} has been requested!')
+            return redirect(url_for('sender_id'))
+
+    return render_template('senderId.html', current_user=current_user, form=form, all_sender_id=all_sender_id)
+
 @app.route('/reports', methods=['GET', 'POST'])
 def reports():
     current_user = get_current_user()
