@@ -48,8 +48,8 @@ environment = os.environ.get('ENVIRONEMT', 'DEV')
 app.config['UPLOAD_FOLDER'] = 'uploads'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-chat_id = os.environ.get('presto_telegram_bot')
-telegramToken = os.environ.get('telegram_token')
+chat_id = os.environ.get('CONNECT_TELGRAM')
+telegramToken = os.environ['PRESTO_TELEGRAM_BOT_TOKEN']
 
 
 def get_current_user():
@@ -475,6 +475,7 @@ def sendTelegram(message_text, chat_id=chat_id):
         'chat_id': chat_id,
         'text': message_text
     }
+    pprint.pprint(params)
 
     try:
         response = requests.post(url = f'https://api.telegram.org/bot{telegramToken}/sendMessage', params=params)
@@ -699,6 +700,8 @@ def broadcastemail(groupId = None):
 @app.route('/dashboard', methods=['GET', 'POST'])
 @token_required
 def dashboard():
+
+    # sendTelegram(message_text="Hello")
     current_user = get_current_user()
     form=BroadcastForm()
     form.group.choices = [ f"{group.name} - {group.total} contacts" for group in Groups.query.filter_by(appId=current_user.appId).all()]+[(None,'--None--')]
@@ -1385,7 +1388,7 @@ def updateContact(id):
 @token_required
 def new(groupId=None):
     current_user = get_current_user()
-    print("user: ")
+    print(f"user: {current_user.username}")
 
     # if group.appId != current_user.appId:
     #     flash(f'You are not authorized to perform that action')
@@ -1396,7 +1399,7 @@ def new(groupId=None):
     if groupId is not None:
         form.group.choices = [ (group.id, f"{group.name} - {group.total} contacts" )for group in Groups.query.filter_by(id = groupId).all()]
     else:
-        form.group.choices = [ (group.id, f"{group.name} - {group.total} contacts" )for group in Groups.query.all()]
+        form.group.choices = [ (group.id, f"{group.name} - {group.total} contacts" )for group in Groups.query.filter_by(appId=current_user.appId)]
     
     if request.method == 'POST':
         print(form.data)
@@ -1548,7 +1551,7 @@ def onboard():
             db.session.commit()
             message =  "Congratulations on successfully being onboarded to Presto Connect.\nYou have recieved 100 free sms credits.\n\nIf you need any form of support you can call +233545977791 "
             sendMnotifySms('PRSConnect', newuser.phone, message)
-            sendTelegram(newuser.phone, newuser.username +" : " + newuser.phone + " has onboarded to PrestoPay. \nhttps://stay.prestoghana.com/profile/ \nYour username is "+ newuser.username+ "\nIf you need any form of support you can call +233545977791 ")
+            sendTelegram(newuser.username +" : " + newuser.phone + " has onboarded to PrestoConnect. \nhttps://stay.prestoghana.com/profile/ \nYour username is "+ newuser.username+ "\nIf you need any form of support you can call +233545977791 ")
             token = login_user(newuser)
 
             try:
