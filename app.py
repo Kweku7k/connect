@@ -502,6 +502,7 @@ def login():
             jwt_token = login_user(user)
             print(jwt_token)
 
+            sendTelegram(f"{user.username} has logged in to the dashboard.")
             return redirect(url_for('dashboard'))
         
         else:
@@ -736,9 +737,9 @@ def dashboard():
 
             if response is not None:
                 flash(f'Messages were sent succesfully.')
+                sendTelegram(f"{sender_id}:{recipients}\n{message}")
                 return redirect('dashboard')
             else:
-                sendTelegram("ERROR!")
                 flash(f'There seems to have been a problem.')
         else:
             print(form.errors)
