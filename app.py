@@ -484,11 +484,16 @@ def sendTelegram(message_text, chat_id=chat_id):
         reportError(e)
         return e
     
+def get_all_sender_ids(current_user):
+    all_sender_id = SenderId.query.filter_by(appId=current_user.appId).all()
+    print(all_sender_id)
+    return all_sender_id
+    
 @app.errorhandler(500)
 def internal_server_error(error):
+    print(error)
     sendTelegram(f"500 Error on Dashboard \n {error}")
     return render_template('500.html'), 500
-
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -707,11 +712,15 @@ def broadcastemail(groupId = None):
 @app.route('/dashboard', methods=['GET', 'POST'])
 @token_required
 def dashboard():
-
-    # sendTelegram(message_text="Hello")
+    
     current_user = get_current_user()
     form=BroadcastForm()
+    
     # form.group.choices = [ f"{group.name} - {group.total} contacts" for group in Groups.query.filter_by(appId=current_user.appId).all()]+[(None,'--None--')]
+    form.senderId.choices = [f"{sender_id.senderId}" for sender_id in get_all_sender_ids(current_user)]
+    
+    # set form.group.data to __none__
+    form.group.data = ('All Contacts - 30 contacts')
     data = {
        "name":current_user.username,
        "smsbalance":0,
@@ -720,7 +729,7 @@ def dashboard():
        "contacts":Contacts.query.filter_by(appId=current_user.appId).count(),
        "groups":Groups.query.filter_by(appId=current_user.appId).count(),
        "reports":Report.query.filter_by(appId=current_user.appId).count()
-    }
+    }  
 
     if request.method == 'POST':
         if form.validate_on_submit():
