@@ -4,7 +4,7 @@ from wtforms.validators import DataRequired, Email, Length, EqualTo, ValidationE
 from wtforms.widgets import TextArea
 
 class BroadcastForm(FlaskForm):
-    # group = SelectField('Group')
+    # group = SelectField('Group')/
     senderId = SelectField('SenderId', choices=[('PrsConnect')])
     recipients = StringField('Recipients', validators=[DataRequired()])
     message = StringField('Message',widget=TextArea(), validators=[DataRequired()])

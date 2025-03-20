@@ -483,6 +483,12 @@ def sendTelegram(message_text, chat_id=chat_id):
     except Exception as e:
         reportError(e)
         return e
+    
+@app.errorhandler(500)
+def internal_server_error(error):
+    sendTelegram(f"500 Error on Dashboard \n {error}")
+    return render_template('500.html'), 500
+
 
 
 @app.route('/login', methods=['GET', 'POST'])
