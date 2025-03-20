@@ -81,6 +81,22 @@
                 </div>
             </a>
         </div>
+        <div class="col-md-6 col-6" >
+            <a href="{{url_for('email_templates')}}">    
+                <div data-aos="fade-up" data-aos-delay="100" class="card">
+                    <h6>Email Templates</h6>
+                    <h2 style="font-weight: 700;">0</h2>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6 col-6" >
+            <a href="{{url_for('email_templates')}}">    
+                <div data-aos="fade-up" data-aos-delay="100" class="card">
+                    <h6>Email Templates</h6>
+                    <h2 style="font-weight: 700;">0</h2>
+                </div>
+            </a>
+        </div>
 
         
 
@@ -104,9 +120,18 @@
                         <h6>Send a quick message to your group</h6>
 
                         <div class="inputTextHolder">
-                            <h6>{{form.group.label}}</h6>
-                            {{form.group (class="inputTextCard", placeholder="Enter your message.")}}
-                            {% for error in form.group.errors %}
+                            <h6>{{form.recipients.label}}</h6>
+                            {{form.recipients (class="inputTextCard", placeholder="Enter phone number(s).")}}
+                            {% for error in form.recipients.errors %}
+                            <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+                            {% endfor %}
+                            <h6 style="font-weight: 100; margin-top: 10px;" class="text-muted">Seperate multiple numbers with a comma(,)</h6>
+                        </div>
+
+                        <div class="inputTextHolder">
+                            <h6>{{form.senderId.label}}</h6>
+                            {{form.senderId (class="inputTextCard", placeholder="Enter your message.")}}
+                            {% for error in form.senderId.errors %}
                             <h6 style="color: red; font-weight: 100;">{{error}}</h6>
                             {% endfor %}
                         </div>

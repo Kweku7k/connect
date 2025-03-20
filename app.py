@@ -704,7 +704,7 @@ def dashboard():
     # sendTelegram(message_text="Hello")
     current_user = get_current_user()
     form=BroadcastForm()
-    form.group.choices = [ f"{group.name} - {group.total} contacts" for group in Groups.query.filter_by(appId=current_user.appId).all()]+[(None,'--None--')]
+    # form.group.choices = [ f"{group.name} - {group.total} contacts" for group in Groups.query.filter_by(appId=current_user.appId).all()]+[(None,'--None--')]
     data = {
        "name":current_user.username,
        "smsbalance":0,
@@ -718,28 +718,30 @@ def dashboard():
     if request.method == 'POST':
         if form.validate_on_submit():
             message = form.message.data + "\nPowered By PrestoConnect"
-            group = form.group.data
+            
+            # group = form.group.data
+            sender_id = form.senderId.data
+            recipients = form.recipients.data
+            
+            # split the recipients by comma into an array
+            recipients = recipients.split(',')
+            print(recipients)
 
-            group = getgroup(group)
+            print("Contacts: ")
+            print("Message:",message)
 
-            if group is not None:
-                contacts = [contacts.phoneNumber for contacts in group]
-            else:
-                contacts = Contacts.query.all()
-
-            print("Contacts: ",contacts)
-            print("Message:",message,"Group",group)
-
-            contacts = ['0545977791','0545977791']
-            # contacts = [contact.phoneNumber for contact in Contacts.query.all()]
-            contacts = list(dict.fromkeys(contacts))
-            print(contacts)
-
-            response = sendMnotifySms('LASPAG-CU', contacts, message)
+            response = sendMnotifySms(sender_id, recipients, message)
+            print("response")
+            print(response)
 
             if response is not None:
                 flash(f'Messages were sent succesfully.')
                 return redirect('dashboard')
+            else:
+                sendTelegram("ERROR!")
+                flash(f'There seems to have been a problem.')
+        else:
+            print(form.errors)
     return render_template('dashboard.html', current_user=current_user ,data=data, form=form, user=get_current_user())
 
 @app.route('/contacts', methods=['GET', 'POST'])
@@ -1072,6 +1074,18 @@ def sendMnotifySms(sender_id, recipients, message):
     'message': message,
     'is_schedule': False,
     'schedule_date': ''
+    }
+    url = endPoint + '?key=' + api_key
+    response = requests.post(url, data)
+    data = response.json()
+    pprint.pprint(data)
+    return data
+
+def createMnotifyGroup(group_name):
+    endPoint = 'https://api.mnotify.com/api/sms/quick'
+    api_key = "whmBov51IDjkTtj6AAWmakuid9NljoRPFdr4Jx6rbqM4T" #Remember to put your own API Key here
+    data = {
+    'group_name': group_name,
     }
     url = endPoint + '?key=' + api_key
     response = requests.post(url, data)
