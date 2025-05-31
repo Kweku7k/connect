@@ -6,3 +6,6 @@ flask_wtf
 flask_bcrypt
 pyjwt
 psycopg2-binary
+flask_cors
+python-dotenv
+bs4

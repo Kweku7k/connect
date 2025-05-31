@@ -1,4 +1,3 @@
-
 import csv
 import datetime
 from email.message import EmailMessage
@@ -12,6 +11,7 @@ from flask_migrate import Migrate
 import requests
 from sqlalchemy.dialects.postgresql import JSONB, JSON
 from flask_bcrypt import Bcrypt
+from mnotifyservices import addContactToGroup, addMessageTemplate, createMnotifyGroup, sendBulkMessage
 from variables import *
 from bs4 import BeautifulSoup
 import json
@@ -117,9 +117,10 @@ class Groups(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String)
     appId = db.Column(db.String)
+    groupId = db.Column(db.String)
     slug = db.Column(db.String)
     total = db.Column(db.Integer, default=0)
-    added = db.Column(db.DateTime, default=datetime.datetime.utcnow())
+    added = db.Column(db.DateTime, default=datetime.datetime.now())
 
     def __repr__(self):
         return f"Group('id: {self.id}', 'total:{self.total}', 'slug:{self.slug}')"
@@ -134,7 +135,7 @@ class SenderId(db.Model):
     slug = db.Column(db.String)
     total = db.Column(db.Integer, default=0)
     approved = db.Column(db.Boolean, default=True)
-    added = db.Column(db.DateTime, default=datetime.datetime.utcnow())
+    added = db.Column(db.DateTime, default=datetime.datetime.now())
     date_approved = db.Column(db.DateTime)
 
 
@@ -155,7 +156,7 @@ class User(db.Model):
     total = db.Column(db.Integer, default=0)
     balance = db.Column(db.Float, default=0)
     credits = db.Column(db.Integer, default=0)
-    added = db.Column(db.DateTime, default=datetime.datetime.utcnow())
+    added = db.Column(db.DateTime, default=datetime.datetime.now())
 
     def __repr__(self):
         return f"User('id: {self.id}', 'slug:{self.slug}')"
@@ -170,7 +171,7 @@ class Package(db.Model):
     active = db.Column(db.Boolean, default=True)
     count = db.Column(db.Boolean, default=True)
 
-    added = db.Column(db.DateTime, default=datetime.datetime.utcnow())
+    added = db.Column(db.DateTime, default=datetime.datetime.now())
 
     def __repr__(self):
             return f"Package('id: {self.id}', 'price:{self.price}', 'credits:{self.credits}')"
@@ -196,7 +197,7 @@ class Report(db.Model):
     providerId = db.Column(db.String)
     rawdata = db.Column(JSON, nullable=True)
     responsedata = db.Column(JSON, nullable=True)
-    date = db.Column(db.DateTime, default=datetime.datetime.utcnow())
+    date = db.Column(db.DateTime, default=datetime.datetime.now())
 
     def __repr__(self):
         return f"Report('id: {self.appId}-{self.id}', {self.sent}/{self.contacts}')"
@@ -470,10 +471,57 @@ def updateUserBalance(transaction):
 
     return newLedgerEntry
 
+def format_sms_summary_for_telegram(summary_data):
+    """
+    Format SMS summary data into a readable Telegram message
+    
+    Args:
+        summary_data (dict): The SMS summary data dictionary
+        
+    Returns:
+        str: Formatted message for Telegram
+    """
+    if not summary_data or not isinstance(summary_data, dict):
+        return "Error: Invalid SMS summary data"
+    
+    try:
+        summary = summary_data.get('summary', {})
+        
+        # Format the message
+        message_lines = [
+            "📱 *SMS DELIVERY REPORT* 📱",
+            "",
+            f"🆔 Message ID: `{summary.get('message_id', 'N/A')}`",
+            f"📊 Type: {summary.get('type', 'N/A')}",
+            f"✅ Sent: {summary.get('total_sent', 0)}",
+            f"❌ Rejected: {summary.get('total_rejected', 0)}",
+            f"👥 Total Contacts: {summary.get('contacts', 0)}",
+            f"💰 Credit Used: {summary.get('credit_used', 0)}",
+            f"💳 Credit Left: {summary.get('credit_left', 0)}",
+            "",
+            "📱 Numbers Sent:"
+        ]
+        
+        # Add the numbers that were sent successfully
+        numbers_sent = summary.get('numbers_sent', [])
+        if numbers_sent:
+            for number in numbers_sent[:5]:  # Limit to first 5 numbers
+                message_lines.append(f"  • {number}")
+            
+            if len(numbers_sent) > 5:
+                message_lines.append(f"  • ...and {len(numbers_sent) - 5} more")
+        else:
+            message_lines.append("  • None")
+            
+        return "\n".join(message_lines)
+    except Exception as e:
+        return f"Error formatting SMS summary: {str(e)}"
+
 def sendTelegram(message_text, chat_id=chat_id):
     params = {
         'chat_id': chat_id,
-        'text': message_text
+        'text': message_text,
+        'parse_mode': 'Markdown'  # Enable markdown formatting
     }
     pprint.pprint(params)
 
@@ -577,6 +625,7 @@ def broadcast(groupId = None):
     if groupId is not None:
         form.group.choices = [ (group.id, f"{group.name} - {group.total} contacts" )for group in Groups.query.filter_by(id = groupId).all()]
         grouptotal = Groups.query.get_or_404(groupId).total
+        form.recipients.data = groupId
     else:
         grouptotal = 0
         form.group.choices = [ (group.id, f"{group.name} - {group.total} contacts" )for group in Groups.query.all()]
@@ -602,13 +651,19 @@ def broadcast(groupId = None):
             else:
                 contacts = Contacts.query.all()
 
-            print("Contacts: ",contacts)
+            # print("Contacts: ",contacts)
             print("Message:",message,"Group",group)
 
-            contacts = list(dict.fromkeys(contacts))
-            print(contacts)
+            # contacts = list(dict.fromkeys(contacts))
+            # print(contacts)
 
-            response = sendMnotifySms(senderId, contacts, message)
+            # add message template
+            messageTemplate = addMessageTemplate(groupData.name, message)
+
+            templateId = messageTemplate['_id']
+
+            response = sendBulkMessage(senderId, message, [groupData.groupId],templateId)
+            # response = sendMnotifySms(senderId, contacts, message)
 
             print("response!")
             pprint.pprint(response)
@@ -627,10 +682,16 @@ def broadcast(groupId = None):
 
             # create report.
             createReport(response,rawdata)
+            
+            sendTelegram(f"{current_user.appId}\nMNOTIFY BALANCE:{response["summary"]["credit_left"]}\nUSER BALANCE:{current_user.balance}\nMESSAGE: {message}\n")
+            
 
             if response is not None:
                 flash(f'{response["summary"]["total_sent"]} Messages were sent succesfully. Please check your reports')
                 return redirect(url_for('dashboard'))
+        else:
+            flash(f'Please fill all the required fields')
+            print(form.errors)
     return render_template('broadcast.html', form=form, current_user=current_user, grouptotal=grouptotal)
 
 
@@ -810,7 +871,7 @@ def getGroups(appId):
 def groups():   
     current_user = get_current_user()
 
-    grouplist = Groups.query.filter_by(appId=current_user.appId).all()
+    grouplist = Groups.query.filter_by(appId=current_user.appId).order_by(Groups.id.desc()).all()
 
     groupCount = len(grouplist)
     return render_template('groups.html', current_user=current_user,groupCount=groupCount ,grouplist=grouplist)
@@ -1097,17 +1158,18 @@ def sendMnotifySms(sender_id, recipients, message):
     pprint.pprint(data)
     return data
 
-def createMnotifyGroup(group_name):
-    endPoint = 'https://api.mnotify.com/api/sms/quick'
-    api_key = "whmBov51IDjkTtj6AAWmakuid9NljoRPFdr4Jx6rbqM4T" #Remember to put your own API Key here
-    data = {
-    'group_name': group_name,
-    }
-    url = endPoint + '?key=' + api_key
-    response = requests.post(url, data)
-    data = response.json()
-    pprint.pprint(data)
-    return data
+# def createMnotifyGroup(group_name):
+#     endPoint = 'https://api.mnotify.com/api/sms/quick'
+#     api_key = "whmBov51IDjkTtj6AAWmakuid9NljoRPFdr4Jx6rbqM4T" #Remember to put your own API Key here
+#     data = {
+#     'group_name': group_name,
+#     }
+#     url = endPoint + '?key=' + api_key
+#     response = requests.post(url, data)
+#     data = response.json()
+#     pprint.pprint(data)
+#     return data
+
   
 
 def save_uploaded_file(file):
@@ -1161,10 +1223,17 @@ def upload_file():
 
         if Groups.query.filter_by(slug=slug).first() is None:
             # calculate contacts with the same slug
+            mnotify_group = createMnotifyGroup(slug+name)
+            print("mnotify_group")
+            print(mnotify_group)
+            mnotify_group_id = mnotify_group['_id']
             total = Contacts.query.filter_by(slug=slug).count()
-            newgroup = Groups(name = name, appId=appId, slug=slug, total=total )
+            newgroup = Groups(name = name, appId=appId, slug=slug, total=total, groupId=mnotify_group_id )
             db.session.add(newgroup)
             db.session.commit()
+            
+            # MNOTIFY GROUP CREATION!
+         
         else:
             flash(f'Oops, seems there is a group with this slug. Please provide a different identifier.')
             return redirect(url_for('groups'))
@@ -1182,20 +1251,34 @@ def upload_file():
             # filename =  request.form.get('name',filename)
 
             # Process the CSV file (for demonstration purposes)
-            with open(filename, 'r') as csv_file:
-                csv_reader = csv.reader(csv_file)
+            with open(filename, mode='r') as csv_file:
+                csv_reader = csv.DictReader(csv_file)
                 for row in csv_reader:
                     print(row)
                     # check if phone number already exists
                     # findExistingPhoneNumber()
                     
-                    newcontact = Contacts(name=row[0], phoneNumber=convertToPhoneNumber(row[1]), appId=appId, slug=slug, groupId=newgroup.id, email=row[2])
+                    email = row.get('email', '')
+                    if email == '':
+                        email = "connect"+row.get('phone','')+"@prestoghana.com"
+                    newcontact = Contacts(name=row.get('name'), phoneNumber=convertToPhoneNumber(row.get('phone')), appId=appId, slug=slug, groupId=newgroup.id, email=email)
+                    
+                    data = {
+                        'phone': newcontact.phoneNumber,
+                        'title': 'One', 
+                        'firstname': name,
+                        'lastname': name,
+                        'email': name+appId+"connect@prestoghana.com",
+                        'dob': '1979-01-01',
+                    }
                     try:
                         db.session.add(newcontact)
+                        # add to mnotify group
+                        response = addContactToGroup(mnotify_group_id,data)
+                        pprint.pprint(response)
                     except Exception as e:
                         reportError(e)
                 db.session.commit()
-
         updateGroup(newgroup.id)
         
 
@@ -1304,7 +1387,7 @@ def createReport(reportBody, rawdata):
     print("Creating Report ")
     pprint.pprint(reportBody)
 
-    summaryReport = reportBody['summary']
+    summaryReport = reportBody.get('summary')
     prestoSummaryReport = reportBody['presto_summary_data']
 
     print("PRSREPORT!")
@@ -1894,9 +1977,5 @@ def fetch_metadata_from_urls(urls):
     #         print(f"Keywords: {data['keywords']}")
     #     print('-' * 80)
 
-
-
-
-
 if __name__ == '__main__':
-    app.run(port=4000,host='0.0.0.0',debug=True)
+    app.run(port=5000,host='0.0.0.0',debug=True)
