@@ -683,7 +683,18 @@ def broadcast(groupId = None):
             # create report.
             createReport(response,rawdata)
             
-            sendTelegram(f"{current_user.appId}\nMNOTIFY BALANCE:{response["summary"]["credit_left"]}\nUSER BALANCE:{current_user.balance}\nMESSAGE: {message}\n")
+            # Format message details for Telegram notification
+            telegram_msg = f"""
+            🔔 *Message Broadcast Report*
+            ----------------------------
+            👤 *User:* {current_user.appId}
+            💰 *Mnotify Balance:* {response["summary"]["credit_left"]} credits
+            💳 *User Balance:* {current_user.balance} credits
+
+            📝 *Message:*
+            {message}
+            """
+            sendTelegram(telegram_msg)
             
 
             if response is not None:
