@@ -53,6 +53,7 @@ def addContactToGroup(groupId, data):
     url = endPoint + '/' + str(groupId) + '?key=' + apiKey
     response = requests.post(url, data)
     data = response.json()
+    return data
     
 def addMessageTemplate(template_name, message):
     endPoint = 'https://api.mnotify.com/api/template'
