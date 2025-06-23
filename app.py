@@ -25,7 +25,7 @@ from forms import *
 app=Flask(__name__)
 app.config['SECRET_KEY'] = 'c288b2157916b13s523242q3wede00ba242sdqwc676dfde'
 app.config['JWT_SECRET_KEY'] = 'c288b2157916b13s523242q3wede00ba242sdqwc676dfde'
-
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
 
 # app.config['SQLALCHEMY_DATABASE_URI']= 'postgresql://postgres:adumatta@localhost:5432/connect'
 # app.config['SQLALCHEMY_DATABASE_URI']= 'postgresql://postgres:adumatta@database-1.crebgu8kjb7o.eu-north-1.rds.amazonaws.com:5432/connect'
@@ -1287,9 +1287,9 @@ def upload_file():
                         # add to mnotify group
                         response = addContactToGroup(mnotify_group_id,data)
                         pprint.pprint(response)
+                        db.session.commit()
                     except Exception as e:
                         reportError(e)
-                db.session.commit()
         updateGroup(newgroup.id)
         
 
