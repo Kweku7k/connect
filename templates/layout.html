@@ -48,7 +48,7 @@
           </a>
 
           {% if current_user %}
-          <a href="{{url_for('dashboard')}}" style="text-decoration: none;">
+          <a href="{{url_for('connect.dashboard')}}" style="text-decoration: none;">
             <div style="display: flex; align-items: center;">
               <div class="ellipse" style="width: 50px; height: 50px; background-color: white; border-radius: 50%; border: 2px solid #302cff;">
               <!-- <h1 style="color: #302cff; font-weight: 800;">P</h1> -->
@@ -82,7 +82,7 @@
 
     <div class="flexNavBar">
         <div class="header">
-            <a href="{{url_for('dashboard')}}">
+            <a href="{{url_for('connect.dashboard')}}">
                 <box-icon name='arrow-back' size='md'></box-icon>
             </a>
             <div>

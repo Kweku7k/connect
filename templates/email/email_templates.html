@@ -13,7 +13,7 @@
   <div class="row">
     {% for template in templates %}
     <!-- ADE:  -->
-     <a href="{{url_for('email_details', template=templateId )}}">
+     <a href="{{url_for('connect.email_details', template=templateId )}}">
       <div class="col-md-4">
         <div class="card">
           <img src="{{template.img}}" class="card-img-top" alt="Cover Image">

@@ -14,13 +14,13 @@
 
         </div>
         <div>
-          <a href="{{url_for('broadcast', groupId=group.id)}}">
+          <a href="{{url_for('connect.broadcast', groupId=group.id)}}">
             <button class="pill-button" style="margin-right: 10px;">Send Message</button>
           </a>
-          <a href="{{url_for('broadcastemail', groupId=group.id)}}">
+          <a href="{{url_for('connect.broadcastemail', groupId=group.id)}}">
             <button class="pill-button" style="margin-right: 10px;">Send An Email</button>
           </a>
-          <a href="{{url_for('new', groupId=group.id)}}">
+          <a href="{{url_for('connect.new', groupId=group.id)}}">
             <button class="pill-button-alternate" style="margin-right: 10px;">Add A New Contact</button>
           </a>
             <button class="pill-button" style="background-color: red; margin-right: 10px;" data-bs-toggle="modal" data-bs-target="#deleteModal">Delete</button>
@@ -30,7 +30,7 @@
             <h4>All Your Contacts</h4>
             <h6 class="text-muted">{{count}} contacts</h6>
         </div>
-        <a href="{{url_for('new')}}">
+        <a href="{{url_for('connect.new')}}">
         <button class="pill-button">Add a new contact</button>
         </a>
         {% endif %}

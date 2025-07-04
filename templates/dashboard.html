@@ -2,9 +2,45 @@
 
 {% block head %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+<script>
+window.onload = function() {
+    $('#infoModal').modal('show');
+}
+
+  const modalEl = document.getElementById('infoModal');
+  const modalInstance = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+  modalInstance.hide();
+
+</script>
 {% endblock %}
 
 {% block body %}
+
+
+{% if token %}
+    <div class="modal fade" id="infoModal"  tabindex="-1" role="dialog" aria-labelledby="infoModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document" >
+            <div class="modal-content" style="border-radius:10px">
+                <div class="modal-header">
+                    <h5 class="modal-title text-primary" id="infoModalLabel" >API TOKEN</h5>
+                    <!-- <button type="button" class="btn btn-danger btn-sm" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button> -->
+                </div>
+                <div class="modal-body">
+                    <!-- Add your information content here -->
+                    <p class="text-center " ><b>{{ notice }}</b></p>
+                    <p class="text-center lead" >{{ token }}</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+    
+
 <div class="container">
 <div class="info-block" style="margin-top: 5vh;">
     <div class="flexBar">
@@ -25,7 +61,7 @@
     <div class="row">
 
         <div class="col-md-6 col-6">
-            <a href="{{url_for('purchase')}}">
+            <a href="{{url_for('connect.purchase')}}">
                 <div data-aos="fade-up" class="card">
                     <h6>Credits</h6>
                     <h2 style="font-weight: 700;">{{data.balance}}</h2>
@@ -35,7 +71,7 @@
         </div> 
 
         <div class="col-md-6 col-6">
-            <a href="{{url_for('sender_id')}}">    
+            <a href="{{url_for('connect.sender_id')}}">    
                 <div data-aos="fade-up" data-aos-delay="100" class="card">
                     <h6>Sender Id</h6>
                     <h2 style="font-weight: 700;">{{data.senderIds}}</h2>
@@ -45,7 +81,7 @@
         </div>
         
         <div class="col-md-6 col-6">
-            <a href="{{url_for('contacts')}}">
+            <a href="{{url_for('connect.contacts')}}">
                 <div data-aos="fade-up" data-aos-delay="100" class="card">
                     <h6>Contacts </h6>
                     <h2 style="font-weight: 700;">{{data.contacts}}</h2>
@@ -55,7 +91,7 @@
         </div>
         
         <div class="col-md-6 col-6">
-            <a href="{{url_for('groups')}}">
+            <a href="{{url_for('connect.groups')}}">
                 <div data-aos="fade-up" data-aos-delay="100" class="card">
                     <h6>Groups</h6>
                     <h2 style="font-weight: 700;">{{data.groups}}</h2>
@@ -65,7 +101,7 @@
         </div>   
         
         <div class="col-md-6 col-6">
-            <a href="{{url_for('reports')}}">    
+            <a href="{{url_for('connect.reports')}}">    
                 <div data-aos="fade-up" data-aos-delay="100" class="card">
                     <h6>Reports</h6>
                     <h2 style="font-weight: 700;">{{data.reports}}</h2>
@@ -74,7 +110,7 @@
         </div>
         
         <div class="col-md-6 col-6" >
-            <a href="{{url_for('email_templates')}}">    
+            <a href="{{url_for('connect.email_templates')}}">    
                 <div data-aos="fade-up" data-aos-delay="100" class="card">
                     <h6>Email Templates</h6>
                     <h2 style="font-weight: 700;">0</h2>
@@ -82,7 +118,7 @@
             </a>
         </div>
         <div class="col-md-6 col-6" >
-            <a href="{{url_for('email_templates')}}">    
+            <a href="{{url_for('connect.email_templates')}}">    
                 <div data-aos="fade-up" data-aos-delay="100" class="card">
                     <h6>Email Templates</h6>
                     <h2 style="font-weight: 700;">0</h2>
@@ -90,7 +126,7 @@
             </a>
         </div>
         <div class="col-md-6 col-6" >
-            <a href="{{url_for('email_templates')}}">    
+            <a href="{{url_for('connect.email_templates')}}">    
                 <div data-aos="fade-up" data-aos-delay="100" class="card">
                     <h6>Email Templates</h6>
                     <h2 style="font-weight: 700;">0</h2>
@@ -165,13 +201,10 @@
                 <h6>Buy SMS Credits</h6>
                 <!-- <h1 style="font-weight: 700;">Withdraw</h1> -->
                 <h6>
-                    <a href="{{url_for('groups')}}">
+                    <a href="{{url_for('connect.groups')}}">
                         <button class="pill-button">Create Message</button>
                     </a>
-
-            </h6>
-
-
+                </h6>
             </div>
         </div>
     
@@ -180,11 +213,10 @@
                 <h6>Report A Problem</h6>
                 <!-- <h1 style   ="font-weight: 700;">2</h1> -->
                 <h6>
-                    <a href="{{url_for('home')}}">
+                    <a href="{{url_for('connect.home')}}">
                         <button class="pill-button" onclick="showModal()">Leave Feedback</button>
                     </a>
-
-            </h6>
+                </h6>
             </div>
         </div>
 
@@ -193,11 +225,10 @@
                 <h6>Request A Report</h6>
                 <!-- <h1 style   ="font-weight: 700;">2</h1> -->
                 <h6>
-                    <a href="{{url_for('home')}}">
+                    <a href="{{url_for('connect.home')}}">
                         <button class="pill-button" onclick="showModal()">Requset Report</button>
                     </a>
-
-            </h6>
+                </h6>
             </div>
         </div>
 
@@ -206,24 +237,15 @@
                 <h6>Logout</h6>
                 <!-- <h1 style   ="font-weight: 700;">2</h1> -->
                 <h6>
-                    <a href="{{url_for('logout')}}">
+                    <a href="{{url_for('auth.logout')}}">
                         <button class="pill-button" style="background-color: red;">Logout</button>
                     </a>
-
-            </h6>
+                </h6>
             </div>
         </div>
     
     </div>
-    </div>
-
-
-
+    
 </div>
-
-
-
-
-
 
 {% endblock %}

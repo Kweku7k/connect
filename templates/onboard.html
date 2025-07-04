@@ -9,7 +9,7 @@
     <div class="row" style="justify-content: space-around; margin-top: 5vh;">
         <div class="col-md-6">
             <div class="defaultCard">
-                <form action="" method="post">
+                <form action="{{url_for('api.register')}}" method="post">
                     {{form.hidden_tag()}}
                 <div class="ellipse" style="border: none; border-radius: 50%; overflow: hidden; margin: auto; background-color: rgb(48, 44, 255); border-radius:rgb(48, 44, 255);">
                     <img src="{{url_for('static', filename='img/memoji.png')}}" style="width: 100%;" alt="" srcset="">
