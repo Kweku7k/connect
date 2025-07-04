@@ -22,6 +22,12 @@ def create_app(config_class=Config):
     app.register_blueprint(api_blueprint)
 
     return app
+
+# Add WSGI entry point
+app = create_app()
+
+if __name__ == '__main__':
+    app.run()
     
 
 
