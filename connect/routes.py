@@ -1281,6 +1281,7 @@ def sendTemplateEmail(body):
     pprint.pprint(body['templateBody'])
 
     if templateId == "booking":
+        print("why?!")
         print("BOOKING TEMPLATE!")
         html_content = render_template(f'email/{templateId}.html', body=body['templateBody'])
         
