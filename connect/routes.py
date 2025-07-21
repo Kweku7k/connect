@@ -1275,6 +1275,35 @@ def foomail():
         return jsonify(response)
 # function 
 
+# def sendTemplateEmail(body):
+#     templateId = body.get("templateId", "dynamic")
+#     print("===TEMPLATE BODY====")
+#     pprint.pprint(body['templateBody'])
+
+#     if templateId == "booking":
+#         print("why?!")
+#         print("why not?!")
+#         print("BOOKING TEMPLATE!")
+#         html_content = render_template(f'email/{templateId}.html', body=body['templateBody'])
+        
+#     else:
+#     # For other templates, render with the provided body data
+#         html_content = render_template(f'email/{templateId}.html', body=body)
+
+#     # Send the email
+#     title = body.get("title", "No Title")
+#     subject = body.get("subject", "No Subject")
+    
+#     # receivers = body.get("receivers", [])
+#     receivers = body.get("receivers", [])
+#     bcc_receivers = body.get("bcc", [])
+
+#     emailResponse = sendAnEmail(title, subject, html_content, receivers, bcc_receivers)
+#     print(emailResponse)
+
+#     return emailResponse
+
+
 def sendTemplateEmail(body):
     templateId = body.get("templateId", "dynamic")
     print("===TEMPLATE BODY====")
