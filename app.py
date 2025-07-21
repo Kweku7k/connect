@@ -1799,9 +1799,15 @@ def foomail():
 
 def sendTemplateEmail(body):
     templateId = body.get("templateId", "dynamic")
-
+    
+    if templateId == "booking":
+        print("why?!")
+        print("why not?!")
+        print("BOOKING TEMPLATE!")
+        html_content = render_template(f'email/{templateId}.html', body=body['templateBody'])
+    else:
     # For other templates, render with the provided body data
-    html_content = render_template(f'email/{templateId}.html', body=body)
+        html_content = render_template(f'email/{templateId}.html', body=body)
 
     # Send the email
     title = body.get("title", "No Title")
