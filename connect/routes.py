@@ -4,6 +4,7 @@ from email.message import EmailMessage
 import os
 import pprint
 import smtplib
+import uuid
 from flask import flash, jsonify,redirect,url_for,render_template,request, session, Blueprint
 import requests
 from auth.services import *
@@ -23,8 +24,6 @@ def internal_server_error(error):
     print(error)
     sendTelegram(f"500 Error on Dashboard \n {error}")
     return render_template('500.html'), 500
-
-
 
 @connect.route('/addpackage', methods=['GET','POST'])
 def addPackage():
@@ -231,7 +230,6 @@ def get_all_sender_ids(current_user):
 
 @connect.route('/dashboard', methods=['GET', 'POST'])
 @token_required
-# @jwt_required
 def dashboard():
     token = request.args.get('api_token')
     notice = "Please copy and store it securely. You will not see it again."
@@ -299,7 +297,6 @@ def dashboard():
                 user=get_current_user()
             )
     
-
 @connect.route('/contacts', methods=['GET', 'POST'])
 @connect.route('/contacts/<int:slug>', methods=['GET', 'POST'])
 @token_required
@@ -327,9 +324,6 @@ def contacts(slug = None):
         group = None
     
     return render_template('contacts.html', slug=slug, current_user=current_user, contactlist=contactlist, count=count, group=group, loadingMessage="Please wait while we process your request, this may take some time." )
-
-
-
 
 @connect.route('/issue', methods=['GET', 'POST'])
 def issue():
@@ -451,10 +445,6 @@ def convetIdToPost(idArray):
         posts.append(post)
     return posts
 
-
-
-
-
 def save_uploaded_file(file):
     print(file)
     filename = os.path.join(Config.UPLOAD_FOLDER, file.filename)
@@ -479,8 +469,9 @@ def updateGroup(id):
 def convertToPhoneNumber(phone):
     phone = phone.replace(' ','')
     phone = "0"+phone[-9:]
+    if phone.startswith('233') and len(phone) >= 12:
+        phone.replace('233','0')
     return phone
-
 
 @connect.route('/upload_file', methods=['GET', 'POST'])
 @token_required
@@ -569,7 +560,6 @@ def upload_file():
         return redirect('connect.dashboard')
 
     return "    "
-
 
 @connect.route('/group/<int:groupId>', methods=['GET','POST'])
 def group(groupId):
@@ -711,7 +701,6 @@ def createReport(reportBody, rawdata):
     # done.
     return "Done"
 
-
 @connect.route('/sender_id', methods=['GET', 'POST'])
 def sender_id():
     form = RequestSenderIdForm()
@@ -836,7 +825,6 @@ def new(groupId=None):
 
     return render_template('addcontact.html', form=form, current_user=current_user)
 
-
 @connect.route('/confirm/<string:transactionId>', methods=['GET', 'POST'])
 def confirm(transactionId):
     if request.is_json:
@@ -912,7 +900,6 @@ def confirm(transactionId):
         transaction = Transactions.query.get_or_404(transactionId)
         user = User.query.get_or_404(transaction.userId)
         return render_template('transaction.html', transaction=transaction, user=user)
-
 
 @connect.route('/api/broadcast', methods=['GET', 'POST'])
 def broadcast_api():
@@ -998,10 +985,6 @@ def onboard():
 
     return render_template('onboard.html', form=form)
 
-
-
-
-
 @connect.route('/email_details', methods=['GET', 'POST'])
 @connect.route('/email_details/<string:templateId>', methods=['GET', 'POST'])
 def email_details(templateId=None):
@@ -1053,7 +1036,6 @@ def email_details(templateId=None):
             print(form.errors)
 
     return render_template('email/email_details.html', groups=groups, form=form, template=templateId, templateId=templateId)
-
 
 # class WordpressPost:
 #     def __init__(self, id, title, content, date, author, image):
@@ -1139,11 +1121,9 @@ def thankyou():
 def election():
     return render_template('email/election.html')
 
-
 @connect.route('/survey', methods=['GET', 'POST'])
 def survey():
     return render_template('email/survey.html')
-
 
 @connect.route('/purchase/<int:id>', methods=['GET','POST'])
 def pay(id):
@@ -1201,9 +1181,6 @@ def sendMnotifySms(sender_id, recipients, message):
 #     pprint.pprint(data)
 #     return data
 
-  
-
-
 @connect.errorhandler(500)
 def internal_server_error(error):
     # app.logger.error(error)
@@ -1260,8 +1237,6 @@ def email_preview():
     # response = body
     response = sendTemplateEmail(body)
     return jsonify(response)
-
-
 
 @connect.route('/foomail', methods=['GET', 'POST'])
 def foomail():
@@ -1340,9 +1315,6 @@ def dynamic_csv():
             flash('Please upload a csv file')
             return redirect(url_for('connect.dashboard'))
     
-
-
-
 def broadcast_mail(body):
     pprint.pprint(body)
 
@@ -1350,7 +1322,6 @@ def broadcast_mail(body):
 
     html_content =  render_template(f'email/{templateId}.html', body = body.get("templateBody") )
     return sendAnEmail(body.get("title"), body.get("subject"), html_content, body.get("receivers"), bcc_receivers=body.get("bcc"))
-
 
 def sendAnEmail(title, subject, html_content, email_receiver, bcc_receivers=None,path=None):
     print("Attempting to send an email")
@@ -1466,10 +1437,63 @@ def fetch_metadata_from_urls(urls):
     #         print(f"Keywords: {data['keywords']}")
     #     print('-' * 80)
     
-
+@connect.route('/dashboard/apikeys', methods=['GET', 'POST'])
+def apikeys():
+    user = get_current_user()
+    new_token = ""
+    
+    form = ApiKeyForm()
+    
+    if (request.method == "POST" and form.validate_on_submit):
+        my_keys = ApiKey.query.filter_by(user_id=user.id, project_name=form.project_name.data).all()
+        if my_keys:
+            flash(f"You already have an api key for {form.project_name.data}", "danger")
+            return redirect(url_for('connect.apikeys'))
         
+        raw_token = str(uuid.uuid4())
+        
+        new_key = ApiKey(
+            user_id = user.id,
+            project_name = form.project_name.data,
+            api_key = raw_token,
+            date_created = datetime.datetime.now(),
+            status = False
+        )
+        
+        try:
+            db.session.add(new_key)
+            db.session.commit()
+            new_token = raw_token
+            flash("Api Key created succesfully.", "success")
+        except:
+            db.session.rollback()
+            flash("An error occured while creating your api key. Please try again later", "danger")
+    
+    keys = ApiKey.query.filter_by(user_id=user.id).order_by(ApiKey.date_created.asc()).all()
+    print(f"----------------------------------------------{new_token}---------------------------------------")
+    return render_template('apikeys.html', current_user=user, keys=keys, form=form, new_token=new_token)
+        
+@connect.route('/apikey/delete/<int:key_id>')
+def delete_key(key_id):
+    key = ApiKey.query.get_or_404(key_id)
+    db.session.delete(key)
+    db.session.commit()
+    return redirect(url_for('connect.apikeys'))
  
  
+@connect.route('/apikey/enable/<int:key_id>')
+def enable_key(key_id):
+    key = ApiKey.query.get_or_404(key_id)
+    key.status = True
+    db.session.commit()
+    return redirect(url_for('connect.apikeys'))
+
+@connect.route('/apikey/disable/<int:key_id>')
+def disable_key(key_id):
+    key = ApiKey.query.get_or_404(key_id)
+    key.status = False
+    db.session.commit()
+    return redirect(url_for('connect.apikeys'))
  
  
  

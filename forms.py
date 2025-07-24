@@ -58,3 +58,8 @@ class RequestSenderIdForm(FlaskForm):
     senderId = StringField('Sender Id', validators=[DataRequired()])
     description = StringField('Description', validators=[DataRequired()])
     submit = SubmitField('Request SenderId')
+
+class ApiKeyForm(FlaskForm):
+    project_name = StringField('Project Name', validators=[DataRequired()])
+    submit = SubmitField('Generate Key')
+    

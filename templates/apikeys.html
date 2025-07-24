@@ -1,0 +1,153 @@
+{% extends "layout.html" %}
+
+{% block head %}
+
+{% endblock %}
+{% block body %}
+
+<div class="container">
+<div class="info-block" style="margin-top: 5vh;">
+
+    <div class="flexBar">
+        <div>
+            <h4>API Keys</h4>
+            <h6 class="text-muted">{{current_user.username}}</h6>
+        </div>
+
+        <a href="">
+            <button id="newKey" class="pill-button">Generate New API Key</button>
+        </a>
+
+    </div>
+    <br>
+    <div class="row" style="justify-content: space-around; margin-top: 5vh;">
+        <div class="col">
+            <div class="defaultCard">     
+                <h4>Available API Keys</h4>
+                <p class="">These keys allow secure programmatic access to your account. Manage them to control which applications can interact with your services, and revoke keys when no longer needed.</p>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th class="small">Project Name</th>
+                            <th class="small">Key</th>
+                            <th class="small">Status</th>
+                            <th class="small">Date Created</th>
+                            <th class="small">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for key in keys %}
+                            <tr>
+                                <td class="text-muted small text-capitalize" style="font-size: 12px">{{ key.project_name }}</td>
+
+                                <td class="text-muted small" style="font-size: 12px"><span>************************</span>
+                                    {{ key.api_key[:3] }}  {{ key.api_key[-2:] }}
+                                </td>
+
+                                {% if key.status %}
+                                <td class="small text-success" style="font-size: 12px">
+                                    Enabled
+                                {% else %}
+                                <td class="small text-danger" style="font-size: 12px">
+                                    Disabled
+                                {% endif %}
+                                </td>
+
+                                <td class="text-muted small" style="font-size: 12px">
+                                    {{ key.date_created.strftime('%a, %b %-d, %Y %-I:%M %p') }}
+                                </td>
+
+                                <td class="text-muted">
+                                    <a href="{{ url_for('connect.delete_key', key_id=key.id) }}" class="me-4" style="color:gray"><i class="fa fa-trash"></i></a>
+                                    {% if key.status %}
+                                        <a href="{{ url_for('connect.disable_key', key_id=key.id) }}" class="text-danger"><i class="fa fa-toggle-off"></i></a>
+                                    {% else %}
+                                        <a href="{{ url_for('connect.enable_key', key_id=key.id) }}" class="text-success"><i class="fa fa-toggle-on"></i></a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+
+                    </tbody>
+                </table>            
+            </div>
+        </div>
+        <!-- Modal -->
+        <div class="modal fade" id="apiKeyModal" tabindex="-1" role="dialog" aria-labelledby="apiKeyModalLabel" aria-hidden="true" >
+            <div class="modal-dialog" role="document">
+                <div class="modal-content p-2" style="border-radius:15px" >
+                    <div class="modal-header">
+                        <h4 class="modal-title" id="apiKeyModalLabel">Generate New API Key</h4>
+                        <button type="button" class="" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="">
+                            <form action="" method="POST">
+                                {{form.hidden_tag()}}
+                                
+                                <div class="inputTextHolder">
+                                    <h6>{{form.project_name.label}}</h6>
+                                    {{form.project_name (class="inputTextCard", value="", placeholder="Please enter your project name")}}
+                                    {% for error in form.project_name.errors %}
+                                    <h6 style="color: red; font-weight: 100;">{{error}}</h6>
+                                    {% endfor %}
+                                </div>
+
+                                {{form.submit(class="pill-button", style="width: 100%; margin-top:5vh;", onclick="showLoadingScreen()")}}
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {% if new_token == "James" %}        
+            <div class="modal fade" id="showApiKeyModal" tabindex="-1" role="dialog" aria-labelledby="apiKeyModalLabel" aria-hidden="true" >
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content p-2" style="border-radius:15px" >
+                        <div class="modal-header">
+                            <h4 class="modal-title" id="apiKeyModalLabel">New API Key</h4>
+                            <button type="button" class="" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        
+                        <div class="modal-body">
+                            <div class="">
+                                <p>This is your newly created API Key, copy and store is somewhere safe because you will not be seeing it again.</p>
+                                <div class="">
+                                    {{ new_token }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+   </div>
+</div>
+</div>
+
+<script>
+$(document).ready(function(){
+    $("#newKey").click(function(e){
+        e.preventDefault();
+        $("#apiKeyModal").modal('show');
+    });
+});
+</script>
+
+    <script>
+        window.addEventListener('DOMContentLoaded', function () {
+            const modal = new bootstrap.Modal(document.getElementById('showApiKeyModal'));
+            modal.show();
+        });
+    </script>
+
+        
+
+
+
+{% endblock %}

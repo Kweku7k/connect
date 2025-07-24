@@ -42,7 +42,7 @@
 
     {% for contact in contactlist %}
     <div class="col-md-4">
-      <a href="{{url_for('updateContact', id=contact.id)}}">
+      <a href="{{url_for('connect.updateContact', id=contact.id)}}">
         <div class="card flexBar">
             <div class="profile">
               <h6>{{contact.name}}</h6>
@@ -110,7 +110,7 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             {% if group %}
-            <a href="{{url_for('deleteGroup', id=group.id)}}" >
+            <a href="{{url_for('connect.deleteGroup', id=group.id)}}" >
             {% else %}  
             <a href="#" >
             {% endif %}

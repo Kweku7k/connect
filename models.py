@@ -30,6 +30,7 @@ class SenderId(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     senderId = db.Column(db.String)
     appId = db.Column(db.String)
+    description= db.Column(db.String)
     slug = db.Column(db.String)
     total = db.Column(db.Integer, default=0)
     approved = db.Column(db.Boolean, default=True)
@@ -211,3 +212,12 @@ class EmailTemplateEntry(db.Model):
     def __repr__(self):
         return f"EmailTemplateEntry('{self.name}', ' - {self.subject}')"
 
+class ApiKey(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)    
+    project_name = db.Column(db.String, nullable=False)
+    api_key = db.Column(db.String, nullable=False)
+    date_created = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    status = db.Column(db.Boolean, default=False)
+    
+    

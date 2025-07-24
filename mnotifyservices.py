@@ -95,3 +95,18 @@ def getSmsBalance():
     pprint(data)
     return data
     
+def sendMnotifyApiSms(sender_id, recipients, message):
+    endPoint = 'https://api.mnotify.com/api/sms/quick'
+    api_key = "whmBov51IDjkTtj6AAWmakuid9NljoRPFdr4Jx6rbqM4T" #Remember to put your own API Key here
+    data = {
+    'recipient[]': recipients,
+    'sender': sender_id,
+    'message': message,
+    'is_schedule': False,
+    'schedule_date': ''
+    }
+    url = endPoint + '?key=' + api_key
+    response = requests.post(url, data)
+    data = response.json()
+    pprint(data)
+    return data
