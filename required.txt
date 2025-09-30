@@ -26,3 +26,5 @@ urllib3==1.26.10
 Werkzeug==3.0.1
 WTForms==3.1.2
 zipp==3.17.0
+bs4
+flask_cors

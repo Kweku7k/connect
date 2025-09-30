@@ -1,3 +1,0 @@
-Id,Name,UssdCode,Category,Votes,Image,Number,Approved,Message
-1770,Tewiah Vivian,*844*137*1770#,Entrepreneur Of The Year,3127,https://firebasestorage.googleapis.com/v0/b/ineruu-142dc.appspot.com/o/ineruu-142dc-default-rtdb%2FImages%2F9886C661-F532-4B12-A40C-F4E047518678.jpeg.jpg?alt=media&token=f5922833-e65f-41bf-abae-4c7f1aa3f5dc,559700248,TRUE,Hello {Name}. Your ussd code is {UssdCode}. Your category is {Category}. You have {Votes} votes.
-1827,Anyan Juliana,*844*137*1827#,Entrepreneur Of The Year,3116,,545977791,TRUE,Hello {Name}. Your ussd code is {UssdCode}. Your category is {Category}. You have {Votes} votes.
