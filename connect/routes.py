@@ -1250,7 +1250,7 @@ def internal_server_error(error):
 #         return "This endpoint only supports POST requests."
     
 
-@connect.route('/email_preview', methods=['GET', 'POST'])
+@connect.route('/email_previewemail_preview', methods=['GET', 'POST'])
 def email_preview():
     body = session['temporaryBody']
     print("===email===body====")
