@@ -2144,6 +2144,19 @@ def send_message():
     text = data.get("text")
     return send_whatsapp_message(to, text)
 
+@app.route("/wa/send/otp", methods=["POST"])
+@presto_app_key_required
+def send_whatsapp_otp():
+    data = request.get_json()
+    to = data.get("to")
+    text = data.get("text")
+    otp_response = sendMnotifySms("PrestoQ", to, text)
+    print("OTP response: ", otp_response)
+    to = normalize_phone_number(to)
+    print("Normalized phone number: ", to)
+    return send_whatsapp_message(to, text)
+
+
 # Verification
 @app.route("/wa/callback", methods=["GET", "POST"])
 def verify_token():
