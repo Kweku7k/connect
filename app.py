@@ -2139,7 +2139,8 @@ def normalize_phone_number(phone_number):
 def send_message():
     data = request.get_json()
     to = data.get("to")
-    normalize_phone_number(to)
+    to = normalize_phone_number(to)
+    print("Normalized phone number: ", to)
     text = data.get("text")
     return send_whatsapp_message(to, text)
 
