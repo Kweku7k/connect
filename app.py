@@ -1,5 +1,5 @@
 import csv
-import datetime
+from datetime import datetime, timedelta
 from email.message import EmailMessage
 import os
 import pprint
@@ -18,6 +18,7 @@ import json
 from functools import wraps
 import jwt
 from utils import *
+import uuid
 
 from forms import *
 # from flask_login import UserMixin, login_user, logout_user, current_user, LoginManager, login_required
@@ -30,7 +31,7 @@ app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
 # app.config['SQLALCHEMY_DATABASE_URI']= 'postgresql://postgres:adumatta@localhost:5432/connect'
 # app.config['SQLALCHEMY_DATABASE_URI']= 'postgresql://postgres:adumatta@database-1.crebgu8kjb7o.eu-north-1.rds.amazonaws.com:5432/connect'
 app.config['SQLALCHEMY_DATABASE_URI']= os.environ.get('CONNECT_DB_URL', 'postgresql://postgres:adumatta@localhost:5432/connect' )
-
+print(app.config['SQLALCHEMY_DATABASE_URI'])
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 bcrypt = Bcrypt(app)
@@ -51,6 +52,17 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 chat_id = os.environ.get('CONNECT_TELGRAM')
 telegramToken = os.environ['PRESTO_TELEGRAM_BOT_TOKEN']
 
+# WhatsApp API configuration
+VERIFY_TOKEN = os.environ.get("WHATSAPP_VERIFY_TOKEN")
+PHONE_NUMBER_ID = os.environ.get("WHATSAPP_PHONE_NUMBER_ID")
+WHATSAPP_TOKEN = os.environ.get("WHATSAPP_PERMANENT_TOKEN")
+
+# Endpoint configuration for sending message and session
+API_ENDPOINT = os.environ.get("API_ENDPOINT")
+
+# Presto App Key for API authentication
+PRESTO_APP_KEY = os.environ.get("PRESTO_APP_KEY")
+
 
 def get_current_user():
     # TODO: Convert class into dictionary
@@ -68,7 +80,7 @@ def reportTelegram():
 def login_user(user):
     print("Logging in :")
     print(user)
-    token = jwt.encode({'user':user.id, 'exp':datetime.datetime.now()+datetime.timedelta(minutes=30)}, app.config['SECRET_KEY'])
+    token = jwt.encode({'user':user.id, 'exp':datetime.now+datetime.timedelta(minutes=30)}, app.config['SECRET_KEY'])
     session['jwt']=token
     session['current_user'] = user.id
     return token
@@ -108,6 +120,25 @@ def token_required(f):
     return decorated
 
 
+def presto_app_key_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        # Get the x-presto-app-key header
+        app_key = request.headers.get('x-presto-app-key')
+        
+        if not app_key:
+            return jsonify({'error': 'Missing x-presto-app-key header'}), 401
+        
+        # Validate the app key
+        if app_key != PRESTO_APP_KEY:
+            print(f'Invalid app key provided: {app_key}')
+            return jsonify({'error': 'Invalid x-presto-app-key'}), 403
+        
+        return f(*args, **kwargs)
+    
+    return decorated
+
+
 
 # ------ MODELS
 
@@ -120,7 +151,7 @@ class Groups(db.Model):
     groupId = db.Column(db.String)
     slug = db.Column(db.String)
     total = db.Column(db.Integer, default=0)
-    added = db.Column(db.DateTime, default=datetime.datetime.now())
+    added = db.Column(db.DateTime, default=datetime.now)
 
     def __repr__(self):
         return f"Group('id: {self.id}', 'total:{self.total}', 'slug:{self.slug}')"
@@ -135,7 +166,7 @@ class SenderId(db.Model):
     slug = db.Column(db.String)
     total = db.Column(db.Integer, default=0)
     approved = db.Column(db.Boolean, default=True)
-    added = db.Column(db.DateTime, default=datetime.datetime.now())
+    added = db.Column(db.DateTime, default=datetime.now)
     date_approved = db.Column(db.DateTime)
 
 
@@ -156,7 +187,7 @@ class User(db.Model):
     total = db.Column(db.Integer, default=0)
     balance = db.Column(db.Float, default=0)
     credits = db.Column(db.Integer, default=0)
-    added = db.Column(db.DateTime, default=datetime.datetime.now())
+    added = db.Column(db.DateTime, default=datetime.now)
 
     def __repr__(self):
         return f"User('id: {self.id}', 'slug:{self.slug}')"
@@ -171,7 +202,7 @@ class Package(db.Model):
     active = db.Column(db.Boolean, default=True)
     count = db.Column(db.Boolean, default=True)
 
-    added = db.Column(db.DateTime, default=datetime.datetime.now())
+    added = db.Column(db.DateTime, default=datetime.now)
 
     def __repr__(self):
             return f"Package('id: {self.id}', 'price:{self.price}', 'credits:{self.credits}')"
@@ -197,7 +228,7 @@ class Report(db.Model):
     providerId = db.Column(db.String)
     rawdata = db.Column(JSON, nullable=True)
     responsedata = db.Column(JSON, nullable=True)
-    date = db.Column(db.DateTime, default=datetime.datetime.now())
+    date = db.Column(db.DateTime, default=datetime.now)
 
     def __repr__(self):
         return f"Report('id: {self.appId}-{self.id}', {self.sent}/{self.contacts}')"
@@ -252,7 +283,7 @@ class Transactions(db.Model):
     username = db.Column(db.String)
     packageId = db.Column(db.String)
     package = db.Column(db.String)
-    date_created = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    date_created = db.Column(db.DateTime, default=datetime.now)
     amount = db.Column(db.Float)
     total = db.Column(db.Float)
     charges = db.Column(db.Float)
@@ -290,7 +321,7 @@ class LedgerEntry(db.Model):
     package = db.Column(db.String)
     packageId = db.Column(db.String)
     ref = db.Column(db.String)
-    date_created = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    date_created = db.Column(db.DateTime, default=datetime.now)
 
     def __repr__(self):
         return f"Payment Ghc('{self.amount}', ' - {self.userId}')"
@@ -304,7 +335,7 @@ class EmailTemplateEntry(db.Model):
     message = db.Column(db.String)
     templateId = db.Column(db.String)
     groupId = db.Column(db.String)
-    date_created = db.Column(db.DateTime, default=datetime.datetime.utcnow)
+    date_created = db.Column(db.DateTime, default=datetime.now)
     date_sent = db.Column(db.DateTime)
     templateBody = db.Column(JSONB, nullable=True)
     recievers = db.Column(JSONB, nullable=True)
@@ -313,6 +344,20 @@ class EmailTemplateEntry(db.Model):
     def __repr__(self):
         return f"EmailTemplateEntry('{self.name}', ' - {self.subject}')"
 
+
+class Session(db.Model):
+    tablename = ['Session']
+    
+    id = db.Column(db.Integer, primary_key=True)
+    phone_number = db.Column(db.String(20), unique=True, nullable=False)
+    session_id = db.Column(db.String(36), unique=True, nullable=False)
+    whatsapp_id = db.Column(db.String())
+    token = db.Column(db.String())
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    
+    def __repr__(self):
+        return f'<Session {self.phone_number}: {self.session_id}>'
 
 
 
@@ -636,7 +681,7 @@ def broadcast(groupId = None):
                 flash(f'You dont have enough credits, Please purchase a bundle to continue.')
                 return redirect(url_for('purchase'))
             
-            message = form.message.data + f"\n{datetime.datetime.now().strftime('%c')}"+"\nPowered By PrestoConnect"
+            message = form.message.data + f"\n{datetime.now.strftime('%c')}"+"\nPowered By PrestoConnect"
             groupId = form.group.data
             senderId = form.senderId.data
 
@@ -731,7 +776,7 @@ def broadcastemail(groupId = None):
                 flash(f'You dont have enough credits, Please purchase a bundle to continue.')
                 return redirect(url_for('purchase'))
             
-            message = form.message.data + f"\n{datetime.datetime.now().strftime('%c')}"+"\nPowered By PrestoConnect"
+            message = form.message.data + f"\n{datetime.now.strftime('%c')}"+"\nPowered By PrestoConnect"
             groupId = form.group.data
             # senderId = form.senderId.data
 
@@ -1229,7 +1274,7 @@ def upload_file():
         # appId = request.form.get('appId','default')
         appId = current_user.appId
 
-        slug=appId + name.replace(" ","")+datetime.datetime.now().strftime('%c')
+        slug=appId + name.replace(" ","")+datetime.now.strftime('%c')
         print("name:",name, "slug:",slug)
 
         if Groups.query.filter_by(slug=slug).first() is None:
@@ -1325,7 +1370,7 @@ def group(groupId):
         csv_content = csv_file.read().decode('utf-8')
 
         # Generate a unique file name with date-time stamp
-        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        timestamp = datetime.now.strftime('%Y-%m-%d_%H-%M-%S')
         # filename = f"uploaded_csv_{timestamp}.csv"
         filename = f"{timestamp}-rawdata.csv"
 
@@ -1649,7 +1694,7 @@ def broadcast_api():
     body = request.json
     pprint.pprint(body)
 
-    message = body.get('message') + f"\n{datetime.datetime.now().strftime('%c')}"+"\nPowered By PrestoConnect"
+    message = body.get('message') + f"\n{datetime.now.strftime('%c')}"+"\nPowered By PrestoConnect"
     senderId = body.get('senderId', 'PRSConnect')
     contacts = body.get('contacts', None)
     # array of contacts
@@ -1993,6 +2038,210 @@ def fetch_metadata_from_urls(urls):
     #         print(f"Description: {data['description']}")
     #         print(f"Keywords: {data['keywords']}")
     #     print('-' * 80)
+    
+    
+    
+####### Middleware #######
+# Helper function to check if session exists
+def check_session_exists(phone_number):
+    session = Session.query.filter_by(phone_number=phone_number).first()
+    return session.session_id if session else None
+
+# Helper function to create a new session
+def create_session(phone_number):
+    session_id = str(uuid.uuid4())
+    
+    try:
+        new_session = Session(
+            phone_number=phone_number,
+            session_id=session_id,
+            created_at=datetime.now(),
+            updated_at=datetime.now()
+        )
+        db.session.add(new_session)
+        db.session.commit()
+        return session_id
+    except Exception as e:
+        # If session already exists, return existing session_id
+        print(f"Error creating session: {e}")
+        db.session.rollback()
+        return check_session_exists(phone_number)
+
+# Function to get or create session for a phone number
+def get_or_create_session(phone_number):
+    session = Session.query.filter_by(phone_number=phone_number).first()
+    
+    if session:
+        return session.session_id
+    else:
+        return create_session(phone_number)
+
+# Function to update session timestamp
+def update_session_timestamp(phone_number):
+    session = Session.query.filter_by(phone_number=phone_number).first()
+    if session:
+        session.updated_at = datetime.now()
+        db.session.commit()
+
+# Function to send message and session to endpoint
+def send_message_to_endpoint(message, session_id):
+    try:
+        payload = {
+            "message": message,
+            "session_id": session_id
+        }
+        print(f"Sending message to endpoint: {payload}")
+                
+        response = requests.post(API_ENDPOINT, json=payload, timeout=10)
+        
+        try:
+            response_json = response.json()
+            response.raise_for_status()
+            return response_json
+        except ValueError:
+            response.raise_for_status()
+            return {"response": response.text}
+            
+    except requests.exceptions.RequestException as e:
+        return None
+
+def send_whatsapp_message(to, text):
+    url = f"https://graph.facebook.com/v21.0/{PHONE_NUMBER_ID}/messages"
+
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": to,
+        "type": "text",
+        "text": {"body": text}
+    }   
+    print("Sending WhatsApp message to: ", to)
+    pprint.pprint(payload)
+
+    response = requests.post(url, headers=headers, json=payload)
+    return response.json()
+
+
+@app.route("/wa/send", methods=["POST"])
+@presto_app_key_required
+def send_message():
+    data = request.get_json()
+    to = data.get("to")
+    text = data.get("text")
+    return send_whatsapp_message(to, text)
+
+# Verification
+@app.route("/wa/callback", methods=["GET", "POST"])
+def verify_token():
+    mode = request.args.get("hub.mode")
+    token = request.args.get("hub.verify_token")
+    challenge = request.args.get("hub.challenge")
+    
+    # Handle GET request for webhook verification
+    if request.method == "GET":
+        if mode == "subscribe" and token == VERIFY_TOKEN:
+            print("Verification successful", challenge)
+            return challenge, 200
+        else:
+            print("Verification failed", mode, token, VERIFY_TOKEN)
+            return "Verification failed", 403
+    
+    # Handle POST request for incoming messages
+    body = request.get_json() or {}
+    print("Incoming WhatsApp payload:", body)
+
+    sender_wa_id = None
+    message_text = None
+
+    try:
+        entry = body.get("entry", [])[0]
+        changes = entry.get("changes", [])[0]
+        value = changes.get("value", {})
+
+        messages = value.get("messages", [])
+        if messages:
+            msg = messages[0]
+            sender_wa_id = msg.get("from")
+
+            if msg.get("type") == "text":
+                message_text = msg["text"]["body"]
+
+    except Exception as e:
+        print("Error parsing payload:", e)
+
+    # ──────────────────── PROCESS MESSAGE AND SEND REPLY ─────────────────────
+    if sender_wa_id and message_text:
+        # Get or create session for this phone number
+        session_id = get_or_create_session(sender_wa_id)
+        update_session_timestamp(sender_wa_id)
+        
+        # Send message and session to endpoint
+        api_response = send_message_to_endpoint(message_text, session_id)
+        
+        # Prepare reply text
+        if api_response:
+            # Extract response from API (adjust based on your API response structure)
+            reply_text = api_response.get("response", api_response.get("message", "I received your message."))
+        else:
+            reply_text = "Hello"
+        
+        # Send reply back to user
+        send_whatsapp_message(sender_wa_id, reply_text)
+        
+    return "EVENT_RECEIVED", 200
+
+
+# Receiving messages
+@app.route("/webhook", methods=["POST"])
+def receive_message():
+    data = request.get_json()
+
+    print("NEW WHATSAPP UPDATE:")
+    pprint.pprint(data)
+    
+    sender_wa_id = None
+    message_text = None
+
+    try:
+        entry = data.get("entry", [])[0]
+        changes = entry.get("changes", [])[0]
+        value = changes.get("value", {})
+
+        messages = value.get("messages", [])
+        if messages:
+            msg = messages[0]
+            sender_wa_id = msg.get("from")
+
+            if msg.get("type") == "text":
+                message_text = msg["text"]["body"]
+
+    except Exception as e:
+        print("Error parsing payload:", e)
+
+    # ──────────────────── PROCESS MESSAGE AND SEND REPLY ─────────────────────
+    if sender_wa_id and message_text:
+        # Get or create session for this phone number
+        session_id = get_or_create_session(sender_wa_id)
+        update_session_timestamp(sender_wa_id)
+        
+        # Send message and session to endpoint
+        api_response = send_message_to_endpoint(message_text, session_id)
+        
+        # Prepare reply text
+        if api_response:
+            # Extract response from API (adjust based on your API response structure)
+            reply_text = api_response.get("response", api_response.get("message", "Hello"))
+        else:
+            reply_text = "Hello"
+        
+        # Send reply back to user
+        send_whatsapp_message(sender_wa_id, reply_text)
+
+    return "EVENT_RECEIVED", 200
 
 if __name__ == '__main__':
     app.run(port=5000,host='0.0.0.0',debug=True)
