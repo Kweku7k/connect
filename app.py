@@ -125,6 +125,7 @@ def presto_app_key_required(f):
     def decorated(*args, **kwargs):
         # Get the x-presto-app-key header
         app_key = request.headers.get('x-presto-app-key')
+
         
         if not app_key:
             return jsonify({'error': 'Missing x-presto-app-key header'}), 401
@@ -2123,6 +2124,7 @@ def send_whatsapp_message(to, text):
     pprint.pprint(payload)
 
     response = requests.post(url, headers=headers, json=payload)
+    print(f"WhatsApp API response: {response.json()}")
     return response.json()
 
 
