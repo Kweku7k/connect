@@ -2128,11 +2128,18 @@ def send_whatsapp_message(to, text):
     return response.json()
 
 
+
+def normalize_phone_number(phone_number):
+    phone_number = phone_number.replace(' ','')
+    phone_number = "233"+phone_number[-9:]
+    return phone_number
+
 @app.route("/wa/send", methods=["POST"])
 @presto_app_key_required
 def send_message():
     data = request.get_json()
     to = data.get("to")
+    normalize_phone_number(to)
     text = data.get("text")
     return send_whatsapp_message(to, text)
 
