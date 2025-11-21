@@ -2098,9 +2098,9 @@ def send_message_to_endpoint(message, session_id):
         try:
             response_json = response.json()
             response.raise_for_status()
-            return response_json
+            return {"response": response_json}
         except ValueError:
-            response.raise_for_status()
+            sendTelegram(f"Error sending message to endpoint: {response.text}")
             return {"response": response.text}
             
     except requests.exceptions.RequestException as e:
@@ -2128,6 +2128,23 @@ def send_whatsapp_message(to, text):
     return response.json()
 
 
+def send_whatsapp_template_message(to, template_data):
+    url = f"https://graph.facebook.com/v21.0/{PHONE_NUMBER_ID}/messages"
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": to,
+        "type": "template",
+        "template": template_data
+    }
+    print("Sending WhatsApp template message to: ", to)
+    pprint.pprint(payload)
+    response = requests.post(url, headers=headers, json=payload)
+    print(f"WhatsApp API response: {response.json()}")
+    return response.json()
 
 def normalize_phone_number(phone_number):
     phone_number = phone_number.replace(' ','')
@@ -2137,17 +2154,28 @@ def normalize_phone_number(phone_number):
 @app.route("/wa/send", methods=["POST"])
 @presto_app_key_required
 def send_message():
+    print("Requesthjdghjdg: ")
     data = request.get_json()
+    print("Data: ", data)
     to = data.get("to")
     to = normalize_phone_number(to)
     print("Normalized phone number: ", to)
     text = data.get("text")
-    return send_whatsapp_message(to, text)
+    
+    if data.get("template", None) is not None:
+        template = data["template"]
+        send_whatsapp_template_message(to, template)
+    else:
+        text = data.get("message") or data.get("response") or "Hello"
+        send_whatsapp_message(to, text)
+    
+    return {"response": "Message sent successfully"}
 
 @app.route("/wa/send/otp", methods=["POST"])
 @presto_app_key_required
 def send_whatsapp_otp():
     data = request.get_json()
+    print("Data: ", data)
     to = data.get("to")
     text = data.get("text")
     otp_response = sendMnotifySms("PrestoQ", to, text)
@@ -2202,6 +2230,7 @@ def verify_token():
         session_id = get_or_create_session(sender_wa_id)
         update_session_timestamp(sender_wa_id)
         
+        
         # Send message and session to endpoint
         api_response = send_message_to_endpoint(message_text, session_id)
         
@@ -2216,6 +2245,8 @@ def verify_token():
         send_whatsapp_message(sender_wa_id, reply_text)
         
     return "EVENT_RECEIVED", 200
+
+
 
 
 # Receiving messages
