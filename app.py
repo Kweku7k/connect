@@ -2114,6 +2114,8 @@ def send_whatsapp_message(to, text):
         "Content-Type": "application/json"
     }
 
+    print("==TEXT==")
+    print(text)
     payload = {
         "messaging_product": "whatsapp",
         "to": to,
