@@ -2120,7 +2120,6 @@ def send_whatsapp_message(to, text):
     if isinstance(text, dict):
         text = text['response']
     
-    
     payload = {
         "messaging_product": "whatsapp",
         "to": to,
@@ -2174,7 +2173,7 @@ def send_message():
         template = data["template"]
         send_whatsapp_template_message(to, template)
     else:
-        text = data.get("message") or data.get("response") or "Hello"
+        text = data.get("message") or data.get("response") or data.get("text") or "Oops, couldnt send message."
         send_whatsapp_message(to, text)
     
     return {"response": "Message sent successfully"}
