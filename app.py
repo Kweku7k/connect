@@ -2240,6 +2240,9 @@ def verify_token():
         
         # Send message and session to endpoint
         api_response = send_message_to_endpoint(message_text, session_id)
+        print('[api_response]:')
+        pprint.pprint(api_response)
+        
         
         # Prepare reply text
         if api_response:
