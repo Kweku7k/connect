@@ -2228,6 +2228,9 @@ def verify_token():
 
             if msg.get("type") == "text":
                 message_text = msg["text"]["body"]
+                
+            if msg.get("type") == "button":
+                message_text = msg["button"]["text"]
 
     except Exception as e:
         print("Error parsing payload:", e)
@@ -2285,6 +2288,9 @@ def receive_message():
 
             if msg.get("type") == "text":
                 message_text = msg["text"]["body"]
+                
+            if msg.get("type") == "button":
+                message_text = msg["button"]["text"]
 
     except Exception as e:
         print("Error parsing payload:", e)
