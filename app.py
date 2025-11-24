@@ -2243,16 +2243,16 @@ def verify_token():
         print('[api_response]:')
         pprint.pprint(api_response)
         
-        
+
         # Prepare reply text
         if api_response:
             # Extract response from API (adjust based on your API response structure)
             reply_text = api_response.get("response", api_response.get("message", "I received your message."))
+            send_whatsapp_message(sender_wa_id, reply_text)
         else:
-            reply_text = "Hello"
+            sendTelegram(f"ERROR: {reply_text}")
         
         # Send reply back to user
-        send_whatsapp_message(sender_wa_id, reply_text)
         
     return "EVENT_RECEIVED", 200
 
