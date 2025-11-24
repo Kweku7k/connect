@@ -2116,11 +2116,13 @@ def send_whatsapp_message(to, text):
 
     print("==TEXT==")
     print(text)
+    
+    
     payload = {
         "messaging_product": "whatsapp",
         "to": to,
         "type": "text",
-        "text": {"body": text['response']}
+        "text": {"body": text}
     }   
     print("Sending WhatsApp message to: ", to)
     pprint.pprint(payload)
@@ -2288,6 +2290,9 @@ def receive_message():
         # Send message and session to endpoint
         api_response = send_message_to_endpoint(message_text, session_id)
         
+        print("API_RESPONSE")
+        print(api_response)
+        
         # Prepare reply text
         if api_response:
             # Extract response from API (adjust based on your API response structure)
@@ -2296,6 +2301,7 @@ def receive_message():
             reply_text = "Hello"
         
         # Send reply back to user
+        print("FINDING BUG IN WA CALLBACK FUNCTION")
         send_whatsapp_message(sender_wa_id, reply_text)
 
     return "EVENT_RECEIVED", 200
