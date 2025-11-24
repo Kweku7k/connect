@@ -1696,7 +1696,7 @@ def broadcast_api():
     body = request.json
     pprint.pprint(body)
 
-    message = body.get('message') + f"\n{datetime.now.strftime('%c')}"+"\nPowered By PrestoConnect"
+    message = body.get('message') + f"\n{datetime.now().strftime('%c')}"+"\nPowered By PrestoConnect"
     senderId = body.get('senderId', 'PRSConnect')
     contacts = body.get('contacts', None)
     # array of contacts
