@@ -2117,6 +2117,9 @@ def send_whatsapp_message(to, text):
     print("==TEXT==")
     print(text)
     
+    if isinstance(text, dict):
+        text = text['response']
+    
     
     payload = {
         "messaging_product": "whatsapp",
