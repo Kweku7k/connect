@@ -2163,6 +2163,7 @@ def send_message():
     to = normalize_phone_number(to)
     print("Normalized phone number: ", to)
     text = data.get("text")
+    print(text)
     
     if data.get("template", None) is not None:
         template = data["template"]
