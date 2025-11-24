@@ -74,7 +74,8 @@ def get_current_user():
     return None
      
 
-def reportTelegram():
+def reportTelegram(error_message):
+    print(error_message)
     pass
 
 def login_user(user):
@@ -2160,7 +2161,7 @@ def normalize_phone_number(phone_number):
 @app.route("/wa/send", methods=["POST"])
 @presto_app_key_required
 def send_message():
-    print("Requesthjdghjdg: ")
+    print("Request===: ")
     data = request.get_json()
     print("Data: ", data)
     to = data.get("to")
@@ -2246,9 +2247,13 @@ def verify_token():
 
         # Prepare reply text
         if api_response:
-            # Extract response from API (adjust based on your API response structure)
-            reply_text = api_response.get("response", api_response.get("message", "I received your message."))
-            send_whatsapp_message(sender_wa_id, reply_text)
+            if api_response['response'].get("template", None) is not None:
+                template = api_response["template"]
+                send_whatsapp_template_message(sender_wa_id, template)
+            else:
+                # Extract response from API (adjust based on your API response structure)
+                reply_text = api_response.get("response", api_response.get("message", "I received your message."))
+                send_whatsapp_message(sender_wa_id, reply_text)
         
         # Send reply back to user
         
