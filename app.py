@@ -2120,7 +2120,7 @@ def send_whatsapp_message(to, text):
         "messaging_product": "whatsapp",
         "to": to,
         "type": "text",
-        "text": {"body": text['body']['response']}
+        "text": {"body": text['response']}
     }   
     print("Sending WhatsApp message to: ", to)
     pprint.pprint(payload)
