@@ -2249,8 +2249,6 @@ def verify_token():
             # Extract response from API (adjust based on your API response structure)
             reply_text = api_response.get("response", api_response.get("message", "I received your message."))
             send_whatsapp_message(sender_wa_id, reply_text)
-        else:
-            sendTelegram(f"ERROR: {reply_text}")
         
         # Send reply back to user
         
