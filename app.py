@@ -2095,7 +2095,8 @@ def send_message_to_endpoint(message, session_id, body):
         payload = {
             "message": message,
             "session_id": session_id,
-            "user_data": user_data
+            "user_data": user_data,
+            "channel":"WHATSAPP"
         }
         print(f"Sending message to endpoint: {payload}")
           
