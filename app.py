@@ -2225,9 +2225,9 @@ def verify_token():
         entry = body.get("entry", [])[0]
         changes = entry.get("changes", [])[0]
         value = changes.get("value", {})
-        contact = value.contacts.get("profile")
-        name = contact.get("profile")['name']
-        wa_id = contact.get("wa_id")
+        # contact = value.contacts.get("profile")
+        # name = contact.get("profile")['name']
+        # wa_id = contact.get("wa_id")
 
         messages = value.get("messages", [])
         if messages:
@@ -2288,11 +2288,6 @@ def receive_message():
         entry = data.get("entry", [])[0]
         changes = entry.get("changes", [])[0]
         value = changes.get("value", {})
-        
-        # contact = value.contacts.get("profile")
-        # name = contact.get("profile")['name']
-        # wa_id = contact.get("wa_id")
-
         messages = value.get("messages", [])
         if messages:
             msg = messages[0]
