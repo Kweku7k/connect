@@ -93,7 +93,8 @@ def send_message_to_endpoint(message, session_id, body):
         payload = {
             "message": message,
             "session_id": session_id,
-            "payload":body
+            "payload":body,
+            "channel":"whatsapp"
         }
                 
         response = requests.post(API_ENDPOINT, json=payload, timeout=10)
