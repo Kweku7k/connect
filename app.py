@@ -12,6 +12,7 @@ import requests
 from sqlalchemy.dialects.postgresql import JSONB, JSON
 from flask_bcrypt import Bcrypt
 from mnotifyservices import addContactToGroup, addMessageTemplate, createMnotifyGroup, sendBulkMessage
+from services import get_user_data_from_whatsapp_payload
 from variables import *
 from bs4 import BeautifulSoup
 import json
@@ -2086,14 +2087,18 @@ def update_session_timestamp(phone_number):
         db.session.commit()
 
 # Function to send message and session to endpoint
-def send_message_to_endpoint(message, session_id):
+def send_message_to_endpoint(message, session_id, body):
+    
     try:
+        user_data = get_user_data_from_whatsapp_payload(payload)
+        
         payload = {
             "message": message,
-            "session_id": session_id
+            "session_id": session_id,
+            "user_data": user_data
         }
         print(f"Sending message to endpoint: {payload}")
-                
+          
         response = requests.post(API_ENDPOINT, json=payload, timeout=10)
         
         try:
@@ -2103,7 +2108,7 @@ def send_message_to_endpoint(message, session_id):
         except ValueError:
             sendTelegram(f"Error sending message to endpoint: {response.text}")
             return {"response": response.text}
-            
+        
     except requests.exceptions.RequestException as e:
         return None
 
@@ -2220,6 +2225,9 @@ def verify_token():
         entry = body.get("entry", [])[0]
         changes = entry.get("changes", [])[0]
         value = changes.get("value", {})
+        contact = value.contacts.get("profile")
+        name = contact.get("profile")['name']
+        wa_id = contact.get("wa_id")
 
         messages = value.get("messages", [])
         if messages:
@@ -2243,7 +2251,7 @@ def verify_token():
         
         
         # Send message and session to endpoint
-        api_response = send_message_to_endpoint(message_text, session_id)
+        api_response = send_message_to_endpoint(message_text, session_id, body)
         print('[api_response]:')
         pprint.pprint(api_response)
         
@@ -2280,6 +2288,10 @@ def receive_message():
         entry = data.get("entry", [])[0]
         changes = entry.get("changes", [])[0]
         value = changes.get("value", {})
+        
+        # contact = value.contacts.get("profile")
+        # name = contact.get("profile")['name']
+        # wa_id = contact.get("wa_id")
 
         messages = value.get("messages", [])
         if messages:
