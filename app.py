@@ -2302,7 +2302,7 @@ def receive_message():
         update_session_timestamp(sender_wa_id)
         
         # Send message and session to endpoint
-        api_response = send_message_to_endpoint(message_text, session_id)
+        api_response = send_message_to_endpoint(message_text, session_id, )
         
         print("API_RESPONSE")
         print(api_response)

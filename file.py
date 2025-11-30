@@ -87,11 +87,13 @@ def update_session_timestamp(phone_number):
         db.session.commit()
 
 # Function to send message and session to endpoint
-def send_message_to_endpoint(message, session_id):
+def send_message_to_endpoint(message, session_id, body):
     try:
+        
         payload = {
             "message": message,
-            "session_id": session_id
+            "session_id": session_id,
+            "payload":body
         }
                 
         response = requests.post(API_ENDPOINT, json=payload, timeout=10)
@@ -179,7 +181,7 @@ def verify_token():
         update_session_timestamp(sender_wa_id)
         
         # Send message and session to endpoint
-        api_response = send_message_to_endpoint(message_text, session_id)
+        api_response = send_message_to_endpoint(message_text, session_id, body)
         
         # Prepare reply text
         if api_response:
