@@ -2090,7 +2090,7 @@ def update_session_timestamp(phone_number):
 def send_message_to_endpoint(message, session_id, body):
     
     try:
-        user_data = get_user_data_from_whatsapp_payload(payload)
+        user_data = get_user_data_from_whatsapp_payload(body)
         
         payload = {
             "message": message,
