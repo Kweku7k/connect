@@ -6,9 +6,9 @@ def get_user_data_from_whatsapp_payload(body):
     print("Changes:", changes)
     value = changes.get("value", {})
     print("Value:", value)
-    contact = value.get("contacts")
+    contact = value.get("contacts")[0]
     print("Contact:", contact)
-    name = contact.get("profile")['name']
+    name = contact["profile"]['name']
     print("Name:", name)
     wa_id = contact.get("wa_id")
     print("WA ID:", wa_id)
