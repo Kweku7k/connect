@@ -65,7 +65,6 @@ BUSINESS_API_ENDPOINT = os.environ.get("BUSINESS_API_ENDPOINT")
 # Presto App Key for API authentication
 PRESTO_APP_KEY = os.environ.get("PRESTO_APP_KEY")
 
-
 def get_current_user():
     # TODO: Convert class into dictionary
     user_found = session.get('current_user', None)
@@ -75,7 +74,6 @@ def get_current_user():
             return user
     return None
      
-
 def reportTelegram(error_message):
     print(error_message)
     pass
@@ -2106,9 +2104,7 @@ def send_message_to_endpoint(message, session_id, body):
             response = requests.post(BUSINESS_API_ENDPOINT, json=payload, timeout=10)
         else:
             response = requests.post(API_ENDPOINT, json=payload, timeout=10)
-            
-        
-        
+
         try:
             response_json = response.json()
             response.raise_for_status()
@@ -2120,8 +2116,8 @@ def send_message_to_endpoint(message, session_id, body):
     except requests.exceptions.RequestException as e:
         return None
 
-def send_whatsapp_message(to, text):
-    url = f"https://graph.facebook.com/v21.0/{PHONE_NUMBER_ID}/messages"
+def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID):
+    url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
 
     headers = {
         "Authorization": f"Bearer {WHATSAPP_TOKEN}",
@@ -2249,6 +2245,8 @@ def verify_token():
         print("Error parsing payload:", e)
 
     # ──────────────────── PROCESS MESSAGE AND SEND REPLY ─────────────────────
+    phone_number_id = get_user_data_from_whatsapp_payload(body)['phone_number_id']
+    
     if sender_wa_id and message_text:
         # Get or create session for this phone number
         session_id = get_or_create_session(sender_wa_id)
@@ -2265,11 +2263,11 @@ def verify_token():
         if api_response:
             if api_response['response'].get("template", None) is not None:
                 template = api_response['response'].get("template")
-                send_whatsapp_template_message(sender_wa_id, template)
+                send_whatsapp_template_message(sender_wa_id, template, phone_number_id)
             else:
                 # Extract response from API (adjust based on your API response structure)
                 reply_text = api_response.get("response", api_response.get("message", "I received your message."))
-                send_whatsapp_message(sender_wa_id, reply_text)
+                send_whatsapp_message(sender_wa_id, reply_text,phone_number_id )
         
         # Send reply back to user
         
@@ -2305,13 +2303,15 @@ def receive_message():
         print("Error parsing payload:", e)
 
     # ──────────────────── PROCESS MESSAGE AND SEND REPLY ─────────────────────
+    
+    phone_number_id = get_user_data_from_whatsapp_payload(data)['phone_number_id']
     if sender_wa_id and message_text:
         # Get or create session for this phone number
         session_id = get_or_create_session(sender_wa_id)
         update_session_timestamp(sender_wa_id)
         
         # Send message and session to endpoint
-        api_response = send_message_to_endpoint(message_text, session_id, )
+        api_response = send_message_to_endpoint(message_text, session_id,data )
         
         print("API_RESPONSE")
         print(api_response)
@@ -2325,7 +2325,7 @@ def receive_message():
         
         # Send reply back to user
         print("FINDING BUG IN WA CALLBACK FUNCTION")
-        send_whatsapp_message(sender_wa_id, reply_text)
+        send_whatsapp_message(sender_wa_id, reply_text, phone_number_id )
 
     return "EVENT_RECEIVED", 200
 
