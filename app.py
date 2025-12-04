@@ -60,6 +60,7 @@ WHATSAPP_TOKEN = os.environ.get("WHATSAPP_PERMANENT_TOKEN")
 
 # Endpoint configuration for sending message and session
 API_ENDPOINT = os.environ.get("API_ENDPOINT")
+BUSINESS_API_ENDPOINT = os.environ.get("BUSINESS_API_ENDPOINT")
 
 # Presto App Key for API authentication
 PRESTO_APP_KEY = os.environ.get("PRESTO_APP_KEY")
@@ -2101,7 +2102,12 @@ def send_message_to_endpoint(message, session_id, body):
         }
         print(f"Sending message to endpoint: {payload}")
           
-        response = requests.post(API_ENDPOINT, json=payload, timeout=10)
+        if  user_data['display_phone_number'] == "233243090721":
+            response = requests.post(BUSINESS_API_ENDPOINT, json=payload, timeout=10)
+        else:
+            response = requests.post(API_ENDPOINT, json=payload, timeout=10)
+            
+        
         
         try:
             response_json = response.json()
