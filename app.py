@@ -1933,10 +1933,8 @@ def sendAnEmail(title, subject, html_content, email_receiver, bcc_receivers=None
     print(email_receiver)
     print(type(email_receiver))
 
-
     email_sender = os.environ["PRESTO_MAIL_USERNAME"]
     email_password = os.environ["PRESTO_MAIL_PASSWORD"]
-
 
     em = EmailMessage()
     em["From"] = f"{title} <{email_sender}>"
@@ -2091,12 +2089,14 @@ def send_message_to_endpoint(message, session_id, body):
     
     try:
         user_data = get_user_data_from_whatsapp_payload(body)
+        # get_app_id
         
         payload = {
             "message": message,
             "session_id": session_id,
             "user_data": user_data,
-            "channel":"WHATSAPP"
+            "channel":"WHATSAPP",
+            "payload":body
         }
         print(f"Sending message to endpoint: {payload}")
           
@@ -2226,10 +2226,7 @@ def verify_token():
         entry = body.get("entry", [])[0]
         changes = entry.get("changes", [])[0]
         value = changes.get("value", {})
-        # contact = value.contacts.get("profile")
-        # name = contact.get("profile")['name']
-        # wa_id = contact.get("wa_id")
-
+    
         messages = value.get("messages", [])
         if messages:
             msg = messages[0]
