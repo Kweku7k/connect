@@ -308,6 +308,19 @@ class Transactions(db.Model):
     def __repr__(self):
         return f"Transaction(': {self.id}', 'Amount:{self.amount}', 'User:{self.username}', 'Paid:{self.paid}')"
 
+class WAPhoneNumbers(db.Model):
+    tablename = ['WAPhoneNumbers']
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String)
+    phone_number = db.Column(db.String)
+    appId = db.Column(db.String)
+    phone_number_id = db.Column(db.String)
+    display_phone_number = db.Column(db.String)
+    
+    def __repr__(self):
+        return f"WAPhoneNumbers Phone Number('{self.appId}', ' - {self.phone_number_id}' - {self.phone_number})"
+     
 class LedgerEntry(db.Model):
     tablename = ['LedgerEntry']
 
@@ -2029,17 +2042,6 @@ def fetch_metadata_from_urls(urls):
         metadata_list.append(metadata)
     return metadata_list
 
-    # metadata = fetch_metadata_from_urls(urls)
-    # for data in metadata:
-    #     print(f"URL: {data['url']}")
-    #     if 'error' in data:
-    #         print(f"Error: {data['error']}")
-    #     else:
-    #         print(f"Title: {data['title']}")
-    #         print(f"Description: {data['description']}")
-    #         print(f"Keywords: {data['keywords']}")
-    #     print('-' * 80)
-    
     
     
 ####### Middleware #######
@@ -2086,7 +2088,6 @@ def update_session_timestamp(phone_number):
 
 # Function to send message and session to endpoint
 def send_message_to_endpoint(message, session_id, body):
-    
     try:
         user_data = get_user_data_from_whatsapp_payload(body)
         # get_app_id
@@ -2139,7 +2140,6 @@ def send_whatsapp_message(to, text):
     response = requests.post(url, headers=headers, json=payload)
     print(f"WhatsApp API response: {response.json()}")
     return response.json()
-
 
 def send_whatsapp_template_message(to, template_data):
     url = f"https://graph.facebook.com/v21.0/{PHONE_NUMBER_ID}/messages"
@@ -2198,7 +2198,6 @@ def send_whatsapp_otp():
     print("Normalized phone number: ", to)
     return send_whatsapp_message(to, text)
 
-
 # Verification
 @app.route("/wa/callback", methods=["GET", "POST"])
 def verify_token():
@@ -2226,6 +2225,7 @@ def verify_token():
         entry = body.get("entry", [])[0]
         changes = entry.get("changes", [])[0]
         value = changes.get("value", {})
+        metadata = value.get("metadata", {})
     
         messages = value.get("messages", [])
         if messages:
@@ -2237,7 +2237,8 @@ def verify_token():
                 
             if msg.get("type") == "button":
                 message_text = msg["button"]["text"]
-
+                
+            
     except Exception as e:
         print("Error parsing payload:", e)
 
@@ -2267,9 +2268,6 @@ def verify_token():
         # Send reply back to user
         
     return "EVENT_RECEIVED", 200
-
-
-
 
 # Receiving messages
 @app.route("/webhook", methods=["POST"])
