@@ -2087,33 +2087,51 @@ def update_session_timestamp(phone_number):
 
 # Function to send message and session to endpoint
 def send_message_to_endpoint(message, session_id, body):
+    print("=== send_message_to_endpoint called ===")
+    print(f"Message: {message}")
+    print(f"Session ID: {session_id}")
+    print(f"Body: {body}")
+
     try:
         user_data = get_user_data_from_whatsapp_payload(body)
+        print(f"Extracted user_data: {user_data}")
         # get_app_id
         
         payload = {
             "message": message,
             "session_id": session_id,
             "user_data": user_data,
-            "channel":"WHATSAPP",
-            "payload":body
+            "channel": "WHATSAPP",
+            "payload": body
         }
-        print(f"Sending message to endpoint: {payload}")
+        print(f"Sending message to endpoint with payload: {payload}")
           
-        if  user_data['display_phone_number'] == "233243090721":
+        if user_data['display_phone_number'] == "233243090721":
+            print(f"Using BUSINESS_API_ENDPOINT: {BUSINESS_API_ENDPOINT}")
             response = requests.post(BUSINESS_API_ENDPOINT, json=payload, timeout=10)
         else:
+            print(f"Using API_ENDPOINT: {API_ENDPOINT}")
             response = requests.post(API_ENDPOINT, json=payload, timeout=10)
+
+        print(f"Raw response: {response}")
+        print(f"Response status code: {response.status_code}")
+        print(f"Response text: {response.text}")
 
         try:
             response_json = response.json()
+            print(f"Response JSON: {response_json}")
             response.raise_for_status()
             return {"response": response_json}
         except ValueError:
+            print("Response is not JSON, sending Telegram alert.")
             sendTelegram(f"Error sending message to endpoint: {response.text}")
             return {"response": response.text}
         
     except requests.exceptions.RequestException as e:
+        print(f"RequestException occurred: {e}")
+        return None
+    except Exception as e:
+        print(f"General Exception occurred: {e}")
         return None
 
 def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID):
