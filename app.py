@@ -2161,6 +2161,44 @@ def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID):
     print(f"WhatsApp API response: {response.json()}")
     return response.json()
 
+def send_whatsapp_image_message(to, text, image, phone_number_id=PHONE_NUMBER_ID):
+    print(f"[send_whatsapp_image_message] Called with to={to}, text={text}, image={image}, phone_number_id={phone_number_id}")
+    url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
+    print(f"[send_whatsapp_image_message] URL: {url}")
+
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    print(f"[send_whatsapp_image_message] Headers: {headers}")
+
+    print("[send_whatsapp_image_message] ==TEXT==")
+    print(text)
+    print("[send_whatsapp_image_message] ==IMAGE==")
+    print(image)
+    
+    if isinstance(text, dict):
+        print("[send_whatsapp_image_message] Text is a dict, extracting 'response' key")
+        text = text.get('response', str(text))
+    
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": to,
+        "type": "image",
+        "image": {"link": image, "caption": text}
+    }
+    print("[send_whatsapp_image_message] Sending WhatsApp image message to:", to)
+    pprint.pprint(payload)
+
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        print(f"[send_whatsapp_image_message] WhatsApp API response status: {response.status_code}")
+        print(f"[send_whatsapp_image_message] WhatsApp API response JSON: {response.json()}")
+        return response.json()
+    except Exception as e:
+        print(f"[send_whatsapp_image_message] Exception occurred: {e}")
+        return {"error": str(e)}
+
 def send_whatsapp_template_message(to, template_data):
     url = f"https://graph.facebook.com/v21.0/{PHONE_NUMBER_ID}/messages"
     headers = {
@@ -2179,6 +2217,8 @@ def send_whatsapp_template_message(to, template_data):
     print(f"WhatsApp API response: {response.json()}")
     return response.json()
 
+
+
 def normalize_phone_number(phone_number):
     phone_number = phone_number.replace(' ','')
     phone_number = "233"+phone_number[-9:]
@@ -2196,12 +2236,20 @@ def send_message():
     text = data.get("text")
     print(text)
     
+    phone_number_id = data.get("phone_number_id")
+    print(phone_number_id)
+    
     if data.get("template", None) is not None:
         template = data["template"]
         send_whatsapp_template_message(to, template)
+        
+    elif data.get("image"):
+        image = data.get("image")
+        send_whatsapp_image_message(to, text, image)
+        
     else:
         text = data.get("message") or data.get("response") or data.get("text") or "Oops, couldnt send message."
-        send_whatsapp_message(to, text)
+        send_whatsapp_message(to, text, phone_number_id)
     
     return {"response": "Message sent successfully"}
 
@@ -2257,8 +2305,7 @@ def verify_token():
                 
             if msg.get("type") == "button":
                 message_text = msg["button"]["text"]
-                
-            
+                      
     except Exception as e:
         print("Error parsing payload:", e)
 
@@ -2272,6 +2319,7 @@ def verify_token():
         
         
         # Send message and session to endpoint
+        # THIS IS TO GET THE RESPONSE FROM THE AI SERVER
         api_response = send_message_to_endpoint(message_text, session_id, body)
         print('[api_response]:')
         pprint.pprint(api_response)
@@ -2282,6 +2330,9 @@ def verify_token():
             if api_response['response'].get("template", None) is not None:
                 template = api_response['response'].get("template")
                 send_whatsapp_template_message(sender_wa_id, template, phone_number_id)
+            elif api_response['response'].get("image", None) is not None:
+                image = api_response['response'].get("image")
+                send_whatsapp_image_message(sender_wa_id, image, phone_number_id)
             else:
                 # Extract response from API (adjust based on your API response structure)
                 reply_text = api_response.get("response", api_response.get("message", "I received your message."))
@@ -2289,62 +2340,6 @@ def verify_token():
         
         # Send reply back to user
         
-    return "EVENT_RECEIVED", 200
-
-# Receiving messages
-@app.route("/webhook", methods=["POST"])
-def receive_message():
-    data = request.get_json()
-
-    print("NEW WHATSAPP UPDATE:")
-    pprint.pprint(data)
-    
-    sender_wa_id = None
-    message_text = None
-
-    try:
-        entry = data.get("entry", [])[0]
-        changes = entry.get("changes", [])[0]
-        value = changes.get("value", {})
-        messages = value.get("messages", [])
-        if messages:
-            msg = messages[0]
-            sender_wa_id = msg.get("from")
-
-            if msg.get("type") == "text":
-                message_text = msg["text"]["body"]
-                
-            if msg.get("type") == "button":
-                message_text = msg["button"]["text"]
-
-    except Exception as e:
-        print("Error parsing payload:", e)
-
-    # ──────────────────── PROCESS MESSAGE AND SEND REPLY ─────────────────────
-    
-    phone_number_id = get_user_data_from_whatsapp_payload(data)['phone_number_id']
-    if sender_wa_id and message_text:
-        # Get or create session for this phone number
-        session_id = get_or_create_session(sender_wa_id)
-        update_session_timestamp(sender_wa_id)
-        
-        # Send message and session to endpoint
-        api_response = send_message_to_endpoint(message_text, session_id,data )
-        
-        print("API_RESPONSE")
-        print(api_response)
-        
-        # Prepare reply text
-        if api_response:
-            # Extract response from API (adjust based on your API response structure)
-            reply_text = api_response.get("response", api_response.get("message", "Hello"))
-        else:
-            reply_text = "Hello"
-        
-        # Send reply back to user
-        print("FINDING BUG IN WA CALLBACK FUNCTION")
-        send_whatsapp_message(sender_wa_id, reply_text, phone_number_id )
-
     return "EVENT_RECEIVED", 200
 
 if __name__ == '__main__':
