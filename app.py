@@ -2326,20 +2326,25 @@ def verify_token():
         
 
         # Prepare reply text
+        print("[Webhook] api_response:", api_response)
         if api_response:
             if api_response.get("respond") == False:
+                print("[Webhook] respond=False, skipping reply.")
                 return "EVENT_RECEIVED", 200
-            
+
             if api_response['response'].get("template", None) is not None:
                 template = api_response['response'].get("template")
+                print("[Webhook] Sending WhatsApp template message:", template)
                 send_whatsapp_template_message(sender_wa_id, template, phone_number_id)
             elif api_response['response'].get("image", None) is not None:
                 image = api_response['response'].get("image")
+                print("[Webhook] Sending WhatsApp image message:", image)
                 send_whatsapp_image_message(sender_wa_id, image, phone_number_id)
             else:
                 # Extract response from API (adjust based on your API response structure)
                 reply_text = api_response.get("response", api_response.get("message", "I received your message."))
-                send_whatsapp_message(sender_wa_id, reply_text,phone_number_id )
+                print("[Webhook] Sending WhatsApp text message:", reply_text)
+                send_whatsapp_message(sender_wa_id, reply_text, phone_number_id)
 
         else:
             pass
