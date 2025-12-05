@@ -2328,7 +2328,7 @@ def verify_token():
         # Prepare reply text
         print("[Webhook] api_response:", api_response)
         if api_response:
-            if api_response.get("respond") == False:
+            if api_response.get("response").get("respond") == False:
                 print("[Webhook] respond=False, skipping reply.")
                 return "EVENT_RECEIVED", 200
 
