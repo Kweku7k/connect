@@ -2327,6 +2327,9 @@ def verify_token():
 
         # Prepare reply text
         if api_response:
+            if api_response.get("respond") == False:
+                return "EVENT_RECEIVED", 200
+            
             if api_response['response'].get("template", None) is not None:
                 template = api_response['response'].get("template")
                 send_whatsapp_template_message(sender_wa_id, template, phone_number_id)
@@ -2337,6 +2340,9 @@ def verify_token():
                 # Extract response from API (adjust based on your API response structure)
                 reply_text = api_response.get("response", api_response.get("message", "I received your message."))
                 send_whatsapp_message(sender_wa_id, reply_text,phone_number_id )
+
+        else:
+            pass
         
         # Send reply back to user
         
