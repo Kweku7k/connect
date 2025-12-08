@@ -2314,7 +2314,7 @@ def verify_token():
     
     if sender_wa_id and message_text:
         # Get or create session for this phone number
-        session_id = get_or_create_session(sender_wa_id)
+        session_id = get_or_create_session(phone_number_id+"+"+sender_wa_id)
         update_session_timestamp(sender_wa_id)
         
         
