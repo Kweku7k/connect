@@ -1,3 +1,4 @@
+import base64
 import csv
 from datetime import datetime, timedelta
 from email.message import EmailMessage
@@ -2050,8 +2051,11 @@ def check_session_exists(phone_number):
     return session.session_id if session else None
 
 # Helper function to create a new session
-def create_session(phone_number):
-    session_id = phone_number+str(uuid.uuid4())
+def create_session(phone_number,phone_number_id):
+    session_id = phone_number+"+"+str(uuid.uuid4())
+    
+    uid = base64.urlsafe_b64encode(uuid.uuid4().bytes).decode('utf-8')[:10]
+    session_id = phone_number_id + uid
     
     try:
         new_session = Session(
@@ -2070,13 +2074,13 @@ def create_session(phone_number):
         return check_session_exists(phone_number)
 
 # Function to get or create session for a phone number
-def get_or_create_session(phone_number):
+def get_or_create_session(phone_number, phone_number_id):
     session = Session.query.filter_by(phone_number=phone_number).first()
     
     if session:
         return session.session_id
     else:
-        return create_session(phone_number)
+        return create_session(phone_number, phone_number_id)
 
 # Function to update session timestamp
 def update_session_timestamp(phone_number):
@@ -2310,13 +2314,16 @@ def verify_token():
         print("Error parsing payload:", e)
 
     # ──────────────────── PROCESS MESSAGE AND SEND REPLY ─────────────────────
-    phone_number_id = get_user_data_from_whatsapp_payload(body)['phone_number_id']
+    data_response = get_user_data_from_whatsapp_payload(body)
+    print("data_response")
+    print(data_response)
+    
+    phone_number_id = data_response.get("phone_number_id")
     
     if sender_wa_id and message_text:
         # Get or create session for this phone number
-        session_id = get_or_create_session(sender_wa_id)
+        session_id = get_or_create_session(sender_wa_id,phone_number_id)
         update_session_timestamp(sender_wa_id)
-        
         
         # Send message and session to endpoint
         # THIS IS TO GET THE RESPONSE FROM THE AI SERVER
@@ -2324,7 +2331,6 @@ def verify_token():
         print('[api_response]:')
         pprint.pprint(api_response)
         
-
         # Prepare reply text
         print("[Webhook] api_response:", api_response)
         if api_response:
