@@ -21,7 +21,6 @@ from functools import wraps
 import jwt
 from utils import *
 import uuid
-
 from forms import *
 # from flask_login import UserMixin, login_user, logout_user, current_user, LoginManager, login_required
 
@@ -186,6 +185,7 @@ class User(db.Model):
     phone = db.Column(db.String)
     password = db.Column(db.String)
     appId = db.Column(db.String)
+    waId = db.Column(db.String)
     slug = db.Column(db.String)
     total = db.Column(db.Integer, default=0)
     balance = db.Column(db.Float, default=0)
@@ -194,6 +194,11 @@ class User(db.Model):
 
     def __repr__(self):
         return f"User('id: {self.id}', 'slug:{self.slug}')"
+    
+    @staticmethod
+    def get_app_id(wa_id):
+        user = User.query.filter_by(waId=wa_id).first()  # ✔ use waId not wa_id
+        return user if user else None
 
 
 class Package(db.Model):
@@ -2051,11 +2056,11 @@ def check_session_exists(phone_number):
     return session.session_id if session else None
 
 # Helper function to create a new session
-def create_session(phone_number,phone_number_id):
+def create_session(phone_number,appId):
     session_id = phone_number+"+"+str(uuid.uuid4())
     
     uid = base64.urlsafe_b64encode(uuid.uuid4().bytes).decode('utf-8')[:10]
-    session_id = phone_number_id + uid
+    session_id = appId + uid
     
     try:
         new_session = Session(
@@ -2074,13 +2079,13 @@ def create_session(phone_number,phone_number_id):
         return check_session_exists(phone_number)
 
 # Function to get or create session for a phone number
-def get_or_create_session(phone_number, phone_number_id):
+def get_or_create_session(phone_number, appId):
     session = Session.query.filter_by(phone_number=phone_number).first()
     
     if session:
         return session.session_id
     else:
-        return create_session(phone_number, phone_number_id)
+        return create_session(phone_number, appId)
 
 # Function to update session timestamp
 def update_session_timestamp(phone_number):
@@ -2320,9 +2325,15 @@ def verify_token():
     
     phone_number_id = data_response.get("phone_number_id")
     
+    user=User.get_app_id(phone_number_id)
+    print(user)
+    
+    appId = user.appId
+    print(f"appId: {appId}")
+    
     if sender_wa_id and message_text:
         # Get or create session for this phone number
-        session_id = get_or_create_session(sender_wa_id,phone_number_id)
+        session_id = get_or_create_session(sender_wa_id,appId)
         update_session_timestamp(sender_wa_id)
         
         # Send message and session to endpoint

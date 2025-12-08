@@ -34,6 +34,8 @@
 #         "phone_number_id": phone_number_id
 #     }
     
+
+
 def get_user_data_from_whatsapp_payload(body):
     print("Received body:", body)
 
@@ -108,3 +110,4 @@ def get_user_data_from_whatsapp_payload(body):
         "phone_number_id": phone_number_id,
         "display_phone_number": display_phone_number
     }
+    
