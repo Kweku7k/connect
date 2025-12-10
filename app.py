@@ -2245,7 +2245,7 @@ def send_message():
     text = data.get("text")
     print(text)
     
-    phone_number_id = data.get("phone_number_id")
+    phone_number_id = data.get("phone_number_id",PHONE_NUMBER_ID)
     print(phone_number_id)
     
     if data.get("template", None) is not None:
