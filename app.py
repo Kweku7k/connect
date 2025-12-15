@@ -2115,12 +2115,12 @@ def send_message_to_endpoint(message, session_id, body):
         }
         print(f"Sending message to endpoint with payload: {payload}")
           
-        if user_data['display_phone_number'] == "233243090721":
-            print(f"Using BUSINESS_API_ENDPOINT: {BUSINESS_API_ENDPOINT}")
-            response = requests.post(BUSINESS_API_ENDPOINT, json=payload, timeout=10)
-        else:
-            print(f"Using API_ENDPOINT: {API_ENDPOINT}")
-            response = requests.post(API_ENDPOINT, json=payload, timeout=10)
+        # if user_data['display_phone_number'] == "233243090721":
+        print(f"Using BUSINESS_API_ENDPOINT: {BUSINESS_API_ENDPOINT}")
+        response = requests.post(BUSINESS_API_ENDPOINT, json=payload, timeout=10)
+        # else:
+        #     print(f"Using API_ENDPOINT: {API_ENDPOINT}")
+        #     response = requests.post(API_ENDPOINT, json=payload, timeout=10)
 
         print(f"Raw response: {response}")
         print(f"Response status code: {response.status_code}")
@@ -2255,7 +2255,7 @@ def send_message():
     elif data.get("image"):
         image = data.get("image")
         send_whatsapp_image_message(to, text, image)
-        
+
     else:
         text = data.get("message") or data.get("response") or data.get("text") or "Oops, couldnt send message."
         send_whatsapp_message(to, text, phone_number_id)
