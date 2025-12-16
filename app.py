@@ -2095,7 +2095,7 @@ def update_session_timestamp(phone_number):
         db.session.commit()
 
 # Function to send message and session to endpoint
-def send_message_to_endpoint(message, session_id, body):
+def send_message_to_endpoint(message, session_id, body, appId):
     print("=== send_message_to_endpoint called ===")
     print(f"Message: {message}")
     print(f"Session ID: {session_id}")
@@ -2113,18 +2113,22 @@ def send_message_to_endpoint(message, session_id, body):
             "channel": "WHATSAPP",
             "payload": body
         }
+        
+        headers = {
+            "Content-Type" : "application/json",
+            "x-api-key" : appId
+        }
+        
         print(f"Sending message to endpoint with payload: {payload}")
           
         # if user_data['display_phone_number'] == "233243090721":
         print(f"Using BUSINESS_API_ENDPOINT: {BUSINESS_API_ENDPOINT}")
-        response = requests.post(BUSINESS_API_ENDPOINT, json=payload, timeout=10)
-        # else:
-        #     print(f"Using API_ENDPOINT: {API_ENDPOINT}")
-        #     response = requests.post(API_ENDPOINT, json=payload, timeout=10)
+        response = requests.post(BUSINESS_API_ENDPOINT, json=payload, headers=headers,timeout=10)
 
         print(f"Raw response: {response}")
         print(f"Response status code: {response.status_code}")
         print(f"Response text: {response.text}")
+        print(f"Response headers: {response.headers}")
 
         try:
             response_json = response.json()
@@ -2163,6 +2167,7 @@ def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID):
         "type": "text",
         "text": {"body": text}
     }   
+    
     print("Sending WhatsApp message to: ", to)
     pprint.pprint(payload)
 
@@ -2179,6 +2184,7 @@ def send_whatsapp_image_message(to, text, image, phone_number_id=PHONE_NUMBER_ID
         "Authorization": f"Bearer {WHATSAPP_TOKEN}",
         "Content-Type": "application/json"
     }
+    
     print(f"[send_whatsapp_image_message] Headers: {headers}")
 
     print("[send_whatsapp_image_message] ==TEXT==")
@@ -2192,9 +2198,10 @@ def send_whatsapp_image_message(to, text, image, phone_number_id=PHONE_NUMBER_ID
     
     payload = {
         "messaging_product": "whatsapp",
+        "recipient_type":"individual",
         "to": to,
         "type": "image",
-        "image": {"link": image, "caption": text}
+        "image": {"link": image}
     }
     print("[send_whatsapp_image_message] Sending WhatsApp image message to:", to)
     pprint.pprint(payload)
@@ -2338,7 +2345,7 @@ def verify_token():
         
         # Send message and session to endpoint
         # THIS IS TO GET THE RESPONSE FROM THE AI SERVER
-        api_response = send_message_to_endpoint(message_text, session_id, body)
+        api_response = send_message_to_endpoint(message_text, session_id, body, appId)
         print('[api_response]:')
         pprint.pprint(api_response)
         
