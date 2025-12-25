@@ -2261,7 +2261,7 @@ def send_message():
         
     elif data.get("image"):
         image = data.get("image")
-        send_whatsapp_image_message(to, text, image)
+        send_whatsapp_image_message(to, text, image, phone_number_id)
 
     else:
         text = data.get("message") or data.get("response") or data.get("text") or "Oops, couldnt send message."
