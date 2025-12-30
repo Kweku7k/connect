@@ -370,9 +370,10 @@ class Session(db.Model):
     tablename = ['Session']
     
     id = db.Column(db.Integer, primary_key=True)
-    phone_number = db.Column(db.String(20), unique=True, nullable=False)
-    session_id = db.Column(db.String(36), unique=True, nullable=False)
+    phone_number = db.Column(db.String(20))
+    session_id = db.Column(db.String(36))
     whatsapp_id = db.Column(db.String())
+    appId = db.Column(db.String())
     token = db.Column(db.String())
     created_at = db.Column(db.DateTime, default=datetime.now)
     updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
@@ -2056,16 +2057,18 @@ def check_session_exists(phone_number):
     return session.session_id if session else None
 
 # Helper function to create a new session
-def create_session(phone_number,appId):
+def create_session(phone_number, appId, token):
     session_id = phone_number+"+"+str(uuid.uuid4())
     
     uid = base64.urlsafe_b64encode(uuid.uuid4().bytes).decode('utf-8')[:10]
-    session_id = appId + uid
+    session_id = phone_number + "-" + token + uid
     
     try:
         new_session = Session(
             phone_number=phone_number,
             session_id=session_id,
+            appId=appId,
+            token=token,
             created_at=datetime.now(),
             updated_at=datetime.now()
         )
@@ -2079,13 +2082,13 @@ def create_session(phone_number,appId):
         return check_session_exists(phone_number)
 
 # Function to get or create session for a phone number
-def get_or_create_session(phone_number, appId):
-    session = Session.query.filter_by(phone_number=phone_number).first()
+def get_or_create_session(phone_number, appId,token):
+    session = Session.query.filter_by(phone_number=phone_number,token=token).first()
     
     if session:
         return session.session_id
     else:
-        return create_session(phone_number, appId)
+        return create_session(phone_number, appId, token)
 
 # Function to update session timestamp
 def update_session_timestamp(phone_number):
@@ -2336,11 +2339,15 @@ def verify_token():
     print(user)
     
     appId = user.appId
+    token = user.appId
     print(f"appId: {appId}")
+    
+    # UPDATE
+    
     
     if sender_wa_id and message_text:
         # Get or create session for this phone number
-        session_id = get_or_create_session(sender_wa_id,appId)
+        session_id = get_or_create_session(sender_wa_id, appId, token)
         update_session_timestamp(sender_wa_id)
         
         # Send message and session to endpoint
