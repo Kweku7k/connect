@@ -2075,15 +2075,15 @@ def create_session(phone_number, appId, token):
         db.session.add(new_session)
         db.session.commit()
         return session_id
+    
     except Exception as e:
-        # If session already exists, return existing session_id
         print(f"Error creating session: {e}")
         db.session.rollback()
         return check_session_exists(phone_number)
 
 # Function to get or create session for a phone number
 def get_or_create_session(phone_number, appId,token):
-    session = Session.query.filter_by(phone_number=phone_number,token=token).first()
+    session = Session.query.filter_by(phone_number=phone_number,token=token, appId=appId).first()
     
     if session:
         return session.session_id
@@ -2324,6 +2324,12 @@ def verify_token():
                 
             if msg.get("type") == "button":
                 message_text = msg["button"]["text"]
+                
+            # if location
+            if msg.get("type") == "location":
+                location = msg["location"]
+                message_text = f"Location: {location.get('latitude')}, {location.get('longitude')} - {location.get('name', '')} {location.get('address', '')}"
+                
                       
     except Exception as e:
         print("Error parsing payload:", e)
