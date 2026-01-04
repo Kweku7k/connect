@@ -2328,7 +2328,7 @@ def verify_token():
             # if location
             if msg.get("type") == "location":
                 location = msg["location"]
-                message_text = f"Location: {location.get('latitude')}, {location.get('longitude')} - {location.get('name', '')} {location.get('address', '')}"
+                message_text = f"Latitude: {location.get('latitude')}, Longitude: {location.get('longitude')} - Name: {location.get('name', '')} Address:{location.get('address', '')}"
                 
                       
     except Exception as e:
