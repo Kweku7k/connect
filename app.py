@@ -13,6 +13,7 @@ import requests
 from sqlalchemy.dialects.postgresql import JSONB, JSON
 from flask_bcrypt import Bcrypt
 from mnotifyservices import addContactToGroup, addMessageTemplate, createMnotifyGroup, sendBulkMessage
+from services import get_user_data_from_whatsapp_payload
 from variables import *
 from bs4 import BeautifulSoup
 import json
@@ -47,7 +48,7 @@ cred = credentials.Certificate("config/firebase-key.json")
 # firebase_admin.initialize_app(cred)
 
 firebase_admin.initialize_app(cred, {
-    "storageBucket": "connect.appspot.com"
+    "storageBucket": "prestoqchats.firebasestorage.app"
 })
 
 bucket = storage.bucket()
@@ -2391,10 +2392,7 @@ def verify_token():
                 public_url = upload_image_to_firebase(image_bytes)
                 print(f"[Webhook] public_url: {public_url}")
 
-                
-                # download_whatsapp_image
-                
-                # upload_image_to_firebase
+                message_text = f"Image Url: {public_url}"
                 
                       
     except Exception as e:

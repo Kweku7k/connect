@@ -36,9 +36,6 @@
     
 
 
-import requests
-
-from app import WHATSAPP_TOKEN
 
 
 def get_user_data_from_whatsapp_payload(body):
