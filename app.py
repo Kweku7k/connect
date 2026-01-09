@@ -2137,7 +2137,7 @@ def send_message_to_endpoint(message, session_id, body, appId):
           
         # if user_data['display_phone_number'] == "233243090721":
         print(f"Using BUSINESS_API_ENDPOINT: {BUSINESS_API_ENDPOINT}")
-        response = requests.post(BUSINESS_API_ENDPOINT, json=payload, headers=headers,timeout=10)
+        response = requests.post(BUSINESS_API_ENDPOINT, json=payload, headers=headers,timeout=20)
 
         print(f"Raw response: {response}")
         print(f"Response status code: {response.status_code}")
