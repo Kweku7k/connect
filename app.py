@@ -13,7 +13,6 @@ import requests
 from sqlalchemy.dialects.postgresql import JSONB, JSON
 from flask_bcrypt import Bcrypt
 from mnotifyservices import addContactToGroup, addMessageTemplate, createMnotifyGroup, sendBulkMessage
-from services import get_user_data_from_whatsapp_payload
 from variables import *
 from bs4 import BeautifulSoup
 import json
@@ -23,6 +22,9 @@ from utils import *
 import uuid
 from forms import *
 # from flask_login import UserMixin, login_user, logout_user, current_user, LoginManager, login_required
+import firebase_admin
+from firebase_admin import credentials, storage
+
 
 app=Flask(__name__)
 app.config['SECRET_KEY'] = 'c288b2157916b13s523242q3wede00ba242sdqwc676dfde'
@@ -41,6 +43,14 @@ cors = CORS(app)
 
 algorithms = ["HS256"]
 
+cred = credentials.Certificate("config/firebase-key.json")
+# firebase_admin.initialize_app(cred)
+
+firebase_admin.initialize_app(cred, {
+    "storageBucket": "connect.appspot.com"
+})
+
+bucket = storage.bucket()
 
 baseUrl = os.environ.get('CONNECT_BASE_URL', 'https://connect.prestoghana.com')
 prestoUrl = os.environ.get('PRESTO_PROD_URL', 'https://prestoghana.com')
@@ -2236,6 +2246,40 @@ def send_whatsapp_template_message(to, template_data):
     print(f"WhatsApp API response: {response.json()}")
     return response.json()
 
+def get_whatsapp_media_url(media_id: str) -> str:
+    url = f"https://graph.facebook.com/v19.0/{media_id}"
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}"
+    }
+
+    r = requests.get(url, headers=headers)
+    r.raise_for_status()
+
+    return r.json()["url"]
+
+def download_whatsapp_image(media_url: str) -> bytes:
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}"
+    }
+
+    r = requests.get(media_url, headers=headers)
+    r.raise_for_status()
+
+    return r.content
+
+def upload_image_to_firebase(image_bytes: bytes, content_type="image/jpeg") -> str:
+    filename = f"whatsapp_uploads/{uuid.uuid4()}.jpg"
+
+    blob = bucket.blob(filename)
+    blob.upload_from_string(
+        image_bytes,
+        content_type=content_type
+    )
+
+    # Make image publicly accessible
+    blob.make_public()
+
+    return blob.public_url
 
 
 def normalize_phone_number(phone_number):
@@ -2330,12 +2374,27 @@ def verify_token():
                 location = msg["location"]
                 message_text = f"Latitude: {location.get('latitude')}, Longitude: {location.get('longitude')} - Name: {location.get('name', '')} Address:{location.get('address', '')}"
                 
-                
             # if message type is an image?
             if msg.get("type") == "image":
+                print("[Webhook] Image message detected.")
                 image_id = msg["image"]["id"]
                 message_text = f"[Image message received with ID: {image_id}]"
-                print(message_text)
+                print(f"[Webhook] image_id: {image_id}")
+                print(f"[Webhook] message_text: {message_text}")
+                
+                media_url = get_whatsapp_media_url(image_id)
+                print(f"[Webhook] media_url: {media_url}")
+                
+                image_bytes = download_whatsapp_image(media_url)
+                print(f"[Webhook] image_bytes length: {len(image_bytes)}")
+                
+                public_url = upload_image_to_firebase(image_bytes)
+                print(f"[Webhook] public_url: {public_url}")
+
+                
+                # download_whatsapp_image
+                
+                # upload_image_to_firebase
                 
                       
     except Exception as e:

@@ -36,6 +36,11 @@
     
 
 
+import requests
+
+from app import WHATSAPP_TOKEN
+
+
 def get_user_data_from_whatsapp_payload(body):
     print("Received body:", body)
 
@@ -111,3 +116,4 @@ def get_user_data_from_whatsapp_payload(body):
         "display_phone_number": display_phone_number
     }
     
+
