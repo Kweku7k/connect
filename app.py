@@ -2330,6 +2330,13 @@ def verify_token():
                 location = msg["location"]
                 message_text = f"Latitude: {location.get('latitude')}, Longitude: {location.get('longitude')} - Name: {location.get('name', '')} Address:{location.get('address', '')}"
                 
+                
+            # if message type is an image?
+            if msg.get("type") == "image":
+                image_id = msg["image"]["id"]
+                message_text = f"[Image message received with ID: {image_id}]"
+                print(message_text)
+                
                       
     except Exception as e:
         print("Error parsing payload:", e)
