@@ -3,3 +3,4 @@ env/
 __pycache__/
 migrations/
 Uploads/
+config/firebase-key.json
