@@ -2353,7 +2353,6 @@ def verify_meta_signature():
         return abort(401)
 
 CERTIFICATE = """CmkKJQi5oZTKqafvAhIGZW50OndhIgxTaG9wZmV0Y2ggR2hQyeDhywYaQHu3y/O95NZOPAvzwev1vytY6kc47cXcxUyNKmhsH14tsNL5M7oqAtFUftMaSoi8uZc/flVE9879CGnnUbrF9AISL21uQeW30pPf8FqysJuvbymdU+bkXMHzBY8sYIOLHPzQIqaPHQCBcaVi44JGs9q8"""
-
 @app.route("/.well-known/whatsapp-business-verification", methods=["GET"])
 def whatsapp_verify():  
     return Response(CERTIFICATE, mimetype="text/plain")
@@ -2375,7 +2374,7 @@ def verify_token():
             return "Verification failed", 403
     
     # VERIFICATION FUNCTION
-    verify_meta_signature()
+    # verify_meta_signature()
     
     # Handle POST request for incoming messages
     body = request.get_json() or {}
