@@ -7,7 +7,7 @@ import hmac
 import os
 import pprint
 import smtplib
-from flask import Flask, abort, flash, jsonify,redirect,url_for,render_template,request, session
+from flask import Flask, Response, abort, flash, jsonify,redirect,url_for,render_template,request, session
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -2351,6 +2351,12 @@ def verify_meta_signature():
 
     if not hmac.compare_digest(signature, expected):
         return abort(401)
+
+CERTIFICATE = """CmkKJQi5oZTKqafvAhIGZW50OndhIgxTaG9wZmV0Y2ggR2hQyeDhywYaQHu3y/O95NZOPAvzwev1vytY6kc47cXcxUyNKmhsH14tsNL5M7oqAtFUftMaSoi8uZc/flVE9879CGnnUbrF9AISL21uQeW30pPf8FqysJuvbymdU+bkXMHzBY8sYIOLHPzQIqaPHQCBcaVi44JGs9q8"""
+
+@app.route("/.well-known/whatsapp-business-verification", methods=["GET"])
+def whatsapp_verify():  
+    return Response(CERTIFICATE, mimetype="text/plain")
 
 # Verification
 @app.route("/wa/callback", methods=["GET", "POST"])
