@@ -2,10 +2,12 @@ import base64
 import csv
 from datetime import datetime, timedelta
 from email.message import EmailMessage
+import hashlib
+import hmac
 import os
 import pprint
 import smtplib
-from flask import Flask, flash, jsonify,redirect,url_for,render_template,request, session
+from flask import Flask, abort, flash, jsonify,redirect,url_for,render_template,request, session
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -2330,6 +2332,26 @@ def send_whatsapp_otp():
     print("Normalized phone number: ", to)
     return send_whatsapp_message(to, text)
 
+
+WHATSAPP_CERT_FILE = "certs/whatsapp_certificate.pem"
+
+def verify_meta_signature():
+    # Signature from Meta header
+    signature = request.headers.get("X-Hub-Signature-256")
+    if not signature:
+        return abort(401)
+
+    # Load your certificate
+    with open(WHATSAPP_CERT_FILE, "rb") as f:
+        secret = f.read()
+
+    # Compute hash from request body
+    body = request.get_data()
+    expected = "sha256=" + hmac.new(secret, body, hashlib.sha256).hexdigest()
+
+    if not hmac.compare_digest(signature, expected):
+        return abort(401)
+
 # Verification
 @app.route("/wa/callback", methods=["GET", "POST"])
 def verify_token():
@@ -2345,6 +2367,9 @@ def verify_token():
         else:
             print("Verification failed", mode, token, VERIFY_TOKEN)
             return "Verification failed", 403
+    
+    # VERIFICATION FUNCTION
+    verify_meta_signature()
     
     # Handle POST request for incoming messages
     body = request.get_json() or {}
