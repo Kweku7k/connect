@@ -200,6 +200,7 @@ class User(db.Model):
     appId = db.Column(db.String)
     waId = db.Column(db.String)
     slug = db.Column(db.String)
+    endpoint = db.Column(db.String)
     total = db.Column(db.Integer, default=0)
     balance = db.Column(db.Float, default=0)
     credits = db.Column(db.Integer, default=0)
@@ -2111,7 +2112,7 @@ def update_session_timestamp(phone_number):
         db.session.commit()
 
 # Function to send message and session to endpoint
-def send_message_to_endpoint(message, session_id, body, appId):
+def send_message_to_endpoint(message, session_id, body, appId, endpoint=None):
     print("=== send_message_to_endpoint called ===")
     print(f"Message: {message}")
     print(f"Session ID: {session_id}")
@@ -2139,7 +2140,11 @@ def send_message_to_endpoint(message, session_id, body, appId):
           
         # if user_data['display_phone_number'] == "233243090721":
         print(f"Using BUSINESS_API_ENDPOINT: {BUSINESS_API_ENDPOINT}")
-        response = requests.post(BUSINESS_API_ENDPOINT, json=payload, headers=headers,timeout=20)
+        
+        if endpoint == None:
+            response = requests.post(BUSINESS_API_ENDPOINT, json=payload, headers=headers,timeout=20)
+        else:
+            response = requests.post(endpoint, json=payload, headers=headers,timeout=20)
 
         print(f"Raw response: {response}")
         print(f"Response status code: {response.status_code}")
@@ -2248,7 +2253,7 @@ def send_whatsapp_template_message(to, template_data):
     response = requests.post(url, headers=headers, json=payload)
     print(f"WhatsApp API response: {response.json()}")
     return response.json()
-
+    
 def get_whatsapp_media_url(media_id: str) -> str:
     url = f"https://graph.facebook.com/v19.0/{media_id}"
     headers = {
@@ -2331,7 +2336,6 @@ def send_whatsapp_otp():
     to = normalize_phone_number(to)
     print("Normalized phone number: ", to)
     return send_whatsapp_message(to, text)
-
 
 WHATSAPP_CERT_FILE = "certs/whatsapp_certificate.pem"
 
@@ -2440,6 +2444,7 @@ def verify_token():
     
     appId = user.appId
     token = user.appId
+    endpoint = user.endpoint
     print(f"appId: {appId}")
     
     # UPDATE
@@ -2452,7 +2457,7 @@ def verify_token():
         
         # Send message and session to endpoint
         # THIS IS TO GET THE RESPONSE FROM THE AI SERVER
-        api_response = send_message_to_endpoint(message_text, session_id, body, appId)
+        api_response = send_message_to_endpoint(message_text, session_id, body, appId, endpoint)
         print('[api_response]:')
         pprint.pprint(api_response)
         
