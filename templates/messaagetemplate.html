@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>WhatsApp Templates</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, sans-serif;
+      background: #f9fafb;
+      height: 100vh;
+      display: flex;
+    }
+
+    .sidebar {
+      width: 35%;
+      background: #ffffff;
+      border-right: 1px solid #e5e7eb;
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .sidebar h3 {
+      margin-top: 0;
+    }
+
+    .template {
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      background: #f9fafb;
+    }
+
+    .template.approved {
+      border-left: 4px solid #16a34a;
+    }
+
+    .template.pending {
+      border-left: 4px solid #f59e0b;
+    }
+
+    .template h4 {
+      margin: 0 0 6px;
+      font-size: 14px;
+    }
+
+    .template small {
+      color: #6b7280;
+    }
+
+    .content {
+      flex: 1;
+      padding: 32px;
+      overflow-y: auto;
+    }
+
+    .card {
+      background: #ffffff;
+      max-width: 640px;
+      padding: 32px;
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    label {
+      display: block;
+      font-weight: 500;
+      margin-top: 16px;
+    }
+
+    input, textarea {
+      width: 100%;
+      margin-top: 6px;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      font-size: 14px;
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    button {
+      margin-top: 24px;
+      width: 100%;
+      padding: 14px;
+      border-radius: 10px;
+      border: none;
+      background: #111827;
+      color: #ffffff;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    pre {
+      margin-top: 20px;
+      background: #f3f4f6;
+      padding: 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- LEFT: TEMPLATE LIST -->
+  <div class="sidebar">
+    <h3>Message Templates</h3>
+    <div id="templates">Loading…</div>
+  </div>
+
+  <!-- RIGHT: CREATE FORM -->
+  <div class="content">
+    <div class="card">
+      <h2>Create Utility Template</h2>
+
+      <label>Template Name</label>
+      <input id="name" placeholder="payment_received" />
+
+      <label>Body Text</label>
+      <textarea id="body">
+Hi {{1}}, this is to confirm that we have received your payment of GHS {{2}}.
+Reference: {{3}}
+Date: {{4}}
+      </textarea>
+
+      <label>Footer (optional)</label>
+      <input id="footer" placeholder="This is an automated notification" />
+
+      <button onclick="createTemplate()">Create Template</button>
+
+      <pre id="response"></pre>
+    </div>
+  </div>
+
+  <script>
+    async function fetchTemplates() {
+      try {
+        const res = await fetch("/api/whatsapp/templates");
+        const data = await res.json();
+
+        const container = document.getElementById("templates");
+        container.innerHTML = "";
+
+        if (!data.data || data.data.length === 0) {
+          container.textContent = "No templates found.";
+          return;
+        }
+
+        data.data.forEach(t => {
+          const div = document.createElement("div");
+          div.className = `template ${t.status.toLowerCase()}`;
+
+          div.innerHTML = `
+            <h4>${t.name}</h4>
+            <small>
+              ${t.category} • ${t.language} • ${t.status}
+            </small>
+          `;
+
+          container.appendChild(div);
+        });
+      } catch (err) {
+        document.getElementById("templates").textContent =
+          "Failed to load templates.";
+      }
+    }
+
+    async function createTemplate() {
+      const payload = {
+        name: document.getElementById("name").value.trim(),
+        language: "en_US",
+        category: "MARKETING",
+        components: [
+          {
+            type: "BODY",
+            text: document.getElementById("body").value.trim()
+          }
+        ]
+      };
+
+      const footer = document.getElementById("footer").value.trim();
+      if (footer) {
+        payload.components.push({
+          type: "FOOTER",
+          text: footer
+        });
+      }
+
+      document.getElementById("response").textContent = "Submitting…";
+
+      try {
+        const res = await fetch("/api/whatsapp/templates/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        document.getElementById("response").textContent =
+          JSON.stringify(data, null, 2);
+
+        fetchTemplates();
+      } catch (err) {
+        document.getElementById("response").textContent =
+          "Error submitting template.";
+      }
+    }
+
+    fetchTemplates();
+  </script>
+
+</body>
+</html>

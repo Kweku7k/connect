@@ -70,6 +70,7 @@ telegramToken = os.environ['PRESTO_TELEGRAM_BOT_TOKEN']
 VERIFY_TOKEN = os.environ.get("WHATSAPP_VERIFY_TOKEN")
 PHONE_NUMBER_ID = os.environ.get("WHATSAPP_PHONE_NUMBER_ID")
 WHATSAPP_TOKEN = os.environ.get("WHATSAPP_PERMANENT_TOKEN")
+WABA_ID = os.environ.get("WABA_ID")
 
 # Endpoint configuration for sending message and session
 API_ENDPOINT = os.environ.get("API_ENDPOINT")
@@ -77,6 +78,8 @@ BUSINESS_API_ENDPOINT = os.environ.get("BUSINESS_API_ENDPOINT")
 
 # Presto App Key for API authentication
 PRESTO_APP_KEY = os.environ.get("PRESTO_APP_KEY")
+
+META_GRAPH_BASE = "https://graph.facebook.com/v21.0"
 
 def get_current_user():
     # TODO: Convert class into dictionary
@@ -2450,7 +2453,6 @@ def verify_token():
     
     # UPDATE
     
-    
     if sender_wa_id and message_text:
         # Get or create session for this phone number
         session_id = get_or_create_session(sender_wa_id, appId, token)
@@ -2489,6 +2491,61 @@ def verify_token():
         # Send reply back to user
         
     return "EVENT_RECEIVED", 200
+
+
+
+@app.route("/api/whatsapp/templates/create", methods=["POST"])
+def create_whatsapp_template():
+    """
+    Create a WhatsApp message template
+    """
+
+    payload = request.json
+
+    if not payload:
+        return jsonify({"error": "Missing request body"}), 400
+
+    url = f"https://graph.facebook.com/v21.0/{WABA_ID}/message_templates"
+
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+
+    try:
+        data = response.json()
+    except Exception:
+        return jsonify({"error": "Invalid response from Meta"}), 500
+
+    return jsonify({
+        "status_code": response.status_code,
+        "meta_response": data
+    }), response.status_code
+
+
+
+@app.route("/api/whatsapp/templates", methods=["GET"])
+def list_whatsapp_templates():
+    url = f"{META_GRAPH_BASE}/{WABA_ID}/message_templates"
+
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}"
+    }
+
+    res = requests.get(url, headers=headers)
+
+    try:
+        data = res.json()
+    except Exception:
+        return jsonify({"error": "Invalid response from Meta"}), 500
+
+    return jsonify(data), res.status_code
+
+@app.route('/whatsapp_templates', methods=['GET', 'POST'])
+def whatsapp_templates():
+    return render_template('messaagetemplate.html')
 
 if __name__ == '__main__':
     app.run(port=5000,host='0.0.0.0',debug=True)
