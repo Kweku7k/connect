@@ -2360,6 +2360,8 @@ def verify_meta_signature():
     if not hmac.compare_digest(signature, expected):
         return abort(401)
 
+
+WHATSAPP_CERT_FILE = "certs/whatsapp_certificate.pem"
 CERTIFICATE = """CmoKJgibtvuy49bvAhIGZW50OndhIg1QcmVzdG8gV2Fha3llUJbBqswGGkC1HXv1j2+RaRMqnbxUBt5JoT8oVq9bI/pwSbFwXLd/tQByTJbZRyi9Ih/ZQHyCCfNxQnOV4ckS3ovzoh2yiBgNEi9tOhXduLaT+vFasrCbr28tllrt5VvH8QXQDSuEixz8mKXvSus7g/9y7HLPcH8GDA=="""
 @app.route("/.well-known/whatsapp-business-verification", methods=["GET"])
 def whatsapp_verify():  
