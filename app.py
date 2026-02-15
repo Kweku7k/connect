@@ -2442,11 +2442,12 @@ def verify_token():
         messages = value.get("messages", [])
         if messages:
             msg = messages[0]
-            sender_wa_id = msg.get("from")
-            
-            wa_message_id = messages.get("id", None)
+            sender_wa_id = msg.get("from", None)
+
+            wa_message_id = msg.get("id", None)
             print("GET WA INCOMING MSG ID!")
             print(msg)
+            print(wa_message_id)
             
             # typing_response = send_typing_indicator(wa_message_id, phone_number_id)
             # can we indicate typing?
