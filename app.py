@@ -2428,7 +2428,7 @@ def verify_token():
     print("Incoming WhatsApp payload:", body)
     
     # send back a typing request
-    body.get("")
+    # body.get("")
 
     sender_wa_id = None
     message_text = None

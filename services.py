@@ -59,6 +59,7 @@ def get_user_data_from_whatsapp_payload(body):
 
     phone_number_id = metadata.get("phone_number_id")
     display_phone_number = metadata.get("display_phone_number")
+    message_id = metadata.get("id")
 
     # -----------------------------------------------------
     # CASE 1: USER SENT A MESSAGE (contacts exists)
@@ -79,6 +80,7 @@ def get_user_data_from_whatsapp_payload(body):
             "type": "message",
             "name": name,
             "phone": wa_id,
+            "message_id": message_id,
             "display_phone_number": display_phone_number,
             "phone_number_id": phone_number_id
         }
@@ -97,6 +99,7 @@ def get_user_data_from_whatsapp_payload(body):
         return {
             "type": "status",
             "phone": wa_id,
+            "message_id": message_id,
             "display_phone_number": display_phone_number,
             "phone_number_id": phone_number_id
         }
