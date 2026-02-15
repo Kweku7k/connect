@@ -2449,11 +2449,11 @@ def verify_token():
             print(msg)
             print(wa_message_id)
             
-            typing_response = send_typing_indicator(wa_message_id, phone_number_id)
-            # can we indicate typing?
+            # typing_response = send_typing_indicator(wa_message_id, phone_number_id)
+            # # can we indicate typing?
 
-            print("=====typing_respons====")
-            print(typing_response)
+            # print("=====typing_respons====")
+            # print(typing_response)
 
             if msg.get("type") == "text":
                 message_text = msg["text"]["body"]
@@ -2498,6 +2498,11 @@ def verify_token():
     
     user=User.get_app_id(phone_number_id)
     print(user)
+    
+    typing_response = send_typing_indicator(wa_message_id, phone_number_id)
+
+    print("=====typing_respons====")
+    print(typing_response)
     
     appId = user.appId
     token = user.appId
