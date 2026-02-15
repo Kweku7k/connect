@@ -2443,14 +2443,14 @@ def verify_token():
         if messages:
             msg = messages[0]
             sender_wa_id = msg.get("from")
-            wa_message_id = msg.get("id")
+            wa_message_id = msg.get("id", None)
             print(wa_message_id)
             
-            typing_response = send_typing_indicator(wa_message_id, phone_number_id)
+            # typing_response = send_typing_indicator(wa_message_id, phone_number_id)
             # can we indicate typing?
 
-            print("=====typing_respons====")
-            print(typing_response)
+            # print("=====typing_respons====")
+            # print(typing_response)
 
             if msg.get("type") == "text":
                 message_text = msg["text"]["body"]
