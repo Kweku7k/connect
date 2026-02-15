@@ -2171,10 +2171,13 @@ def send_message_to_endpoint(message, session_id, body, appId, endpoint=None):
     except Exception as e:
         print(f"General Exception occurred: {e}")
         return None
+    
 
 def send_typing_indicator(wa_message_id, phone_number_id):
+    print(f"[send_typing_indicator] Called with wa_message_id={wa_message_id}, phone_number_id={phone_number_id}")
     
     url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
+    print(f"[send_typing_indicator] URL: {url}")
 
     body = {
         "messaging_product": "whatsapp",
@@ -2184,15 +2187,22 @@ def send_typing_indicator(wa_message_id, phone_number_id):
             "type": "text"
         }
     }
+    print(f"[send_typing_indicator] Request body: {body}")
     
     headers = {
         "Authorization": f"Bearer {WHATSAPP_TOKEN}",
         "Content-Type": "application/json"
     }
+    print(f"[send_typing_indicator] Headers set with authorization token")
     
-    response = requests.post(url, headers=headers, json=body)
-    print(f"WhatsApp API response: {response.json()}")
-    return response.json()
+    try:
+        response = requests.post(url, headers=headers, json=body)
+        print(f"[send_typing_indicator] Response status code: {response.status_code}")
+        print(f"[send_typing_indicator] WhatsApp API response: {response.json()}")
+        return response.json()
+    except Exception as e:
+        print(f"[send_typing_indicator] Exception occurred: {e}")
+        return {"error": str(e)}
 
 
 
@@ -2436,12 +2446,11 @@ def verify_token():
             wa_message_id = msg.get("id")
             print(wa_message_id)
             
-            send_typing_indicator(wa_message_id, phone_number_id)
-            
-            
+            typing_response = send_typing_indicator(wa_message_id, phone_number_id)
             # can we indicate typing?
-            
-            
+
+            print("=====typing_respons====")
+            print(typing_response)
 
             if msg.get("type") == "text":
                 message_text = msg["text"]["body"]
