@@ -2172,6 +2172,32 @@ def send_message_to_endpoint(message, session_id, body, appId, endpoint=None):
         print(f"General Exception occurred: {e}")
         return None
 
+def send_typing_indicator(wa_message_id, phone_number_id):
+    
+    url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
+
+    body = {
+        "messaging_product": "whatsapp",
+        "status": "read",
+        "message_id": wa_message_id,
+        "typing_indicator": {
+            "type": "text"
+        }
+    }
+    
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    
+    response = requests.post(url, headers=headers, json=body)
+    print(f"WhatsApp API response: {response.json()}")
+    return response.json()
+
+
+
+
+
 def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID):
     url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
 
@@ -2294,6 +2320,7 @@ def upload_image_to_firebase(image_bytes: bytes, content_type="image/jpeg") -> s
     return blob.public_url
 
 
+
 def normalize_phone_number(phone_number):
     phone_number = phone_number.replace(' ','')
     phone_number = "233"+phone_number[-9:]
@@ -2389,6 +2416,9 @@ def verify_token():
     # Handle POST request for incoming messages
     body = request.get_json() or {}
     print("Incoming WhatsApp payload:", body)
+    
+    # send back a typing request
+    body.get("")
 
     sender_wa_id = None
     message_text = None
@@ -2403,6 +2433,15 @@ def verify_token():
         if messages:
             msg = messages[0]
             sender_wa_id = msg.get("from")
+            wa_message_id = msg.get("id")
+            print(wa_message_id)
+            
+            send_typing_indicator(wa_message_id, phone_number_id)
+            
+            
+            # can we indicate typing?
+            
+            
 
             if msg.get("type") == "text":
                 message_text = msg["text"]["body"]
