@@ -2204,10 +2204,6 @@ def send_typing_indicator(wa_message_id, phone_number_id):
         print(f"[send_typing_indicator] Exception occurred: {e}")
         return {"error": str(e)}
 
-
-
-
-
 def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID):
     url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
 
@@ -2235,6 +2231,50 @@ def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID):
     response = requests.post(url, headers=headers, json=payload)
     print(f"WhatsApp API response: {response.json()}")
     return response.json()
+
+def send_whatsapp_document_message(to, text, document, phone_number_id=PHONE_NUMBER_ID):
+    print(f"[send_whatsapp_document_message] Called with to={to}, text={text}, document={document}, phone_number_id={phone_number_id}")
+    url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
+    print(f"[send_whatsapp_document_message] URL: {url}")
+
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    
+    print(f"[send_whatsapp_document_message] Headers: {headers}")
+
+    print("[send_whatsapp_document_message] ==TEXT==")
+    print(text)
+    print("[send_whatsapp_document_message] ==DOCUMENT==")
+    print(document)
+    
+    if isinstance(text, dict):
+        print("[send_whatsapp_document_message] Text is a dict, extracting 'response' key")
+        text = text.get('response', str(text))
+    
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type":"individual",
+        "to": to,
+        "type": "document",
+        "document": {
+            "link": document,
+            "filename": "document.pdf"
+            }
+    }
+    
+    print("[send_whatsapp_document_message] Sending WhatsApp image message to:", to)
+    pprint.pprint(payload)
+
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        print(f"[send_whatsapp_document_message] WhatsApp API response status: {response.status_code}")
+        print(f"[send_whatsapp_document_message] WhatsApp API response JSON: {response.json()}")
+        return response.json()
+    except Exception as e:
+        print(f"[send_whatsapp_document_message] Exception occurred: {e}")
+        return {"error": str(e)}
 
 def send_whatsapp_image_message(to, text, image, phone_number_id=PHONE_NUMBER_ID):
     print(f"[send_whatsapp_image_message] Called with to={to}, text={text}, image={image}, phone_number_id={phone_number_id}")
@@ -2358,6 +2398,10 @@ def send_message():
     elif data.get("image"):
         image = data.get("image")
         send_whatsapp_image_message(to, text, image, phone_number_id)
+        
+    elif data.get("document"):
+        document = data.get("document")
+        send_whatsapp_document_message(to, text, document, phone_number_id)
 
     else:
         text = data.get("message") or data.get("response") or data.get("text") or "Oops, couldnt send message."
@@ -2419,16 +2463,10 @@ def verify_token():
         else:
             print("Verification failed", mode, token, VERIFY_TOKEN)
             return "Verification failed", 403
-    
-    # VERIFICATION FUNCTION
-    # verify_meta_signature()
-    
+
     # Handle POST request for incoming messages
     body = request.get_json() or {}
     print("Incoming WhatsApp payload:", body)
-    
-    # send back a typing request
-    # body.get("")
 
     sender_wa_id = None
     message_text = None
@@ -2460,7 +2498,7 @@ def verify_token():
                 
             if msg.get("type") == "button":
                 message_text = msg["button"]["text"]
-                
+            
             # if location
             if msg.get("type") == "location":
                 location = msg["location"]
@@ -2483,8 +2521,7 @@ def verify_token():
                 public_url = upload_image_to_firebase(image_bytes)
                 print(f"[Webhook] public_url: {public_url}")
 
-                message_text = f"Image Url: {public_url}"
-                
+                message_text = f"Image Url: {public_url}"       
                       
     except Exception as e:
         print("Error parsing payload:", e)
@@ -2533,12 +2570,18 @@ def verify_token():
                 template = api_response['response'].get("template")
                 print("[Webhook] Sending WhatsApp template message:", template)
                 send_whatsapp_template_message(sender_wa_id, template, phone_number_id)
+            
             elif api_response['response'].get("image", None) is not None:
                 image = api_response['response'].get("image")
                 print("[Webhook] Sending WhatsApp image message:", image)
                 send_whatsapp_image_message(sender_wa_id, image, phone_number_id)
+            
+            elif api_response['response'].get("document", None) is not None:
+                document = api_response['response'].get("document")
+                print("[Webhook] Sending WhatsApp image message:", document)
+                send_whatsapp_document_message(sender_wa_id, document, phone_number_id)
+            
             else:
-                # Extract response from API (adjust based on your API response structure)
                 reply_text = api_response.get("response", api_response.get("message", "I received your message."))
                 print("[Webhook] Sending WhatsApp text message:", reply_text)
                 send_whatsapp_message(sender_wa_id, reply_text, phone_number_id)
