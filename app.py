@@ -2260,7 +2260,7 @@ def send_whatsapp_document_message(to, text, document, phone_number_id=PHONE_NUM
         "type": "document",
         "document": {
             "link": document,
-            "filename": "document.pdf"
+            "filename": "Mr Wu's Menu.pdf"
             }
     }
     
