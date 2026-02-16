@@ -2443,7 +2443,7 @@ def verify_meta_signature():
 
 
 WHATSAPP_CERT_FILE = "certs/whatsapp_certificate.pem"
-CERTIFICATE = """CmoKJgibtvuy49bvAhIGZW50OndhIg1QcmVzdG8gV2Fha3llUJbBqswGGkC1HXv1j2+RaRMqnbxUBt5JoT8oVq9bI/pwSbFwXLd/tQByTJbZRyi9Ih/ZQHyCCfNxQnOV4ckS3ovzoh2yiBgNEi9tOhXduLaT+vFasrCbr28tllrt5VvH8QXQDSuEixz8mKXvSus7g/9y7HLPcH8GDA=="""
+CERTIFICATE = """CmQKIAiti7GLlvCbAhIGZW50OndhIgdNciBXdSdzUI7fzMwGGkARy8E9L3QNigRNTjFRyLYB5U1cpU7OK8mJ8V76alhtroi6n0rSUccg2+SD320P/+UJLBIz+VHsmOY+XBKK+6YLEi9tbkHlt9KT3/BasrCbr2gsnF7l4FvE8QXIE02Eixz8iHZjAnGAvEXEU5o8TC1j2A=="""
 @app.route("/.well-known/whatsapp-business-verification", methods=["GET"])
 def whatsapp_verify():  
     return Response(CERTIFICATE, mimetype="text/plain")
