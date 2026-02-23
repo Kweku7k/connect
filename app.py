@@ -2172,7 +2172,6 @@ def send_message_to_endpoint(message, session_id, body, appId, endpoint=None):
         print(f"General Exception occurred: {e}")
         return None
     
-
 def send_typing_indicator(wa_message_id, phone_number_id):
     print(f"[send_typing_indicator] Called with wa_message_id={wa_message_id}, phone_number_id={phone_number_id}")
     
@@ -2260,7 +2259,7 @@ def send_whatsapp_document_message(to, text, document, phone_number_id=PHONE_NUM
         "type": "document",
         "document": {
             "link": document,
-            "filename": "]Menu.pdf"
+            "filename": "Menu.pdf"
             }
     }
     
@@ -2331,6 +2330,57 @@ def send_whatsapp_template_message(to, template_data):
     print("Sending WhatsApp template message to: ", to)
     pprint.pprint(payload)
     response = requests.post(url, headers=headers, json=payload)
+    print(f"WhatsApp API response: {response.json()}")
+    return response.json()
+
+def send_whatsapp_otp_template_message(to, otp):
+    template_data = {
+        "name": "otp",
+        "language": {
+            "code": "en"
+        },
+        "components": [
+            {
+            "type": "body",
+            "parameters": [
+                {
+                "type": "text",
+                "text": otp
+                }
+            ]
+            },
+            {
+            "type": "button",
+            "sub_type": "url",
+            "index": "0",
+            "parameters": [
+                {
+                "type": "text",
+                "text": otp
+                }
+            ]
+            }
+        ]
+        }
+    
+    url = f"https://graph.facebook.com/v21.0/{PHONE_NUMBER_ID}/messages"
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": to,
+        "type": "template",
+        "template": template_data
+    }
+    
+    print("Sending WhatsApp template message to: ", to)
+    pprint.pprint(payload)
+    
+    response = requests.post(url, headers=headers, json=payload)
+    
     print(f"WhatsApp API response: {response.json()}")
     return response.json()
     
@@ -2420,7 +2470,8 @@ def send_whatsapp_otp():
     print("OTP response: ", otp_response)
     to = normalize_phone_number(to)
     print("Normalized phone number: ", to)
-    return send_whatsapp_message(to, text)
+    # return send_whatsapp_message(to, text)
+    return send_whatsapp_otp_template_message(to, text)
 
 WHATSAPP_CERT_FILE = "certs/whatsapp_certificate.pem"
 
