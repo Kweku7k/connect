@@ -2260,7 +2260,7 @@ def send_whatsapp_document_message(to, text, document, phone_number_id=PHONE_NUM
         "type": "document",
         "document": {
             "link": document,
-            "filename": "Mr Wu's Menu.pdf"
+            "filename": "]Menu.pdf"
             }
     }
     
@@ -2536,10 +2536,11 @@ def verify_token():
     user=User.get_app_id(phone_number_id)
     print(user)
     
-    typing_response = send_typing_indicator(wa_message_id, phone_number_id)
+    if wa_message_id:
+        typing_response = send_typing_indicator(wa_message_id, phone_number_id)
 
-    print("=====typing_respons====")
-    print(typing_response)
+        print("=====typing_respons====")
+        print(typing_response)
     
     appId = user.appId
     token = user.appId
