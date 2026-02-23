@@ -2470,6 +2470,7 @@ def verify_token():
 
     sender_wa_id = None
     message_text = None
+    wa_message_id = None
 
     try:
         entry = body.get("entry", [])[0]
