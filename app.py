@@ -2064,8 +2064,6 @@ def fetch_metadata_from_urls(urls):
         metadata = fetch_metadata(url)
         metadata_list.append(metadata)
     return metadata_list
-
-    
     
 ####### Middleware #######
 # Helper function to check if session exists
@@ -2146,9 +2144,9 @@ def send_message_to_endpoint(message, session_id, body, appId, endpoint=None):
         print(endpoint)
         
         if endpoint == None:
-            response = requests.post(BUSINESS_API_ENDPOINT, json=payload, headers=headers,timeout=20)
+            response = requests.post(BUSINESS_API_ENDPOINT, json=payload, headers=headers,timeout=30)
         else:
-            response = requests.post(endpoint, json=payload, headers=headers,timeout=20)
+            response = requests.post(endpoint, json=payload, headers=headers,timeout=30)
 
         print(f"Raw response: {response}")
         print(f"Response status code: {response.status_code}")
