@@ -2229,6 +2229,8 @@ def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID):
             return
         except (json.JSONDecodeError, ValueError):
             pass
+    else:
+        print("text is safe")
     
     payload = {
         "messaging_product": "whatsapp",
@@ -2469,21 +2471,16 @@ def send_message():
     else:
         text = data.get("message") or data.get("response") or data.get("text") or "Oops, couldnt send message."
 
-        try:
-        # if dict dont send
-            parsed = json.loads(text)
-            print("--parsed")
-            print(parsed)
-            if isinstance(parsed, dict):
-                print("Text is a dict, not sending message.")
-                return {"response": "Text is a dict, not sending message."}
-        except Exception as e:
-            print("Text is not a dict, sending message.")
-            
-            
-        send_whatsapp_message(to, text, phone_number_id)
+        print("Text is safe to send")
+
+        if (isinstance(text, str) and  text.strip().startswith('{')) :
+            return {
+                "message":"Text contains dictionary"
+            } 
+        else:
+            return send_whatsapp_message(to, text, phone_number_id)
     
-    return {"response": "Message sent successfully"}
+    # return {"response": "Message sent successfully"}
 
 @app.route("/wa/send/otp", methods=["POST"])
 @presto_app_key_required
