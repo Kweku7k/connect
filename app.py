@@ -2213,7 +2213,22 @@ def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID):
     print(text)
     
     if isinstance(text, dict):
-        text = text['response']
+        text = text['response'] 
+    
+    if isinstance(text, dict):
+        text = str(text)
+    
+    # Check if text is JSON data (starts with { or [ and ends with } or ])
+    if (isinstance(text, str) and 
+        ((text.strip().startswith('{') and text.strip().endswith('}')) or 
+         (text.strip().startswith('[') and text.strip().endswith(']')))):
+        try:
+            parsed = json.loads(text)
+            # If it successfully parses as JSON, don't send it
+            print("Text is JSON data, not sending message.")
+            return
+        except (json.JSONDecodeError, ValueError):
+            pass
     
     payload = {
         "messaging_product": "whatsapp",
@@ -2453,6 +2468,19 @@ def send_message():
 
     else:
         text = data.get("message") or data.get("response") or data.get("text") or "Oops, couldnt send message."
+
+        try:
+        # if dict dont send
+            parsed = json.loads(text)
+            print("--parsed")
+            print(parsed)
+            if isinstance(parsed, dict):
+                print("Text is a dict, not sending message.")
+                return {"response": "Text is a dict, not sending message."}
+        except Exception as e:
+            print("Text is not a dict, sending message.")
+            
+            
         send_whatsapp_message(to, text, phone_number_id)
     
     return {"response": "Message sent successfully"}
