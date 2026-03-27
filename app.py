@@ -2249,11 +2249,11 @@ def is_code_or_dict(text):
             return True
     
     # Check for suspicious patterns like multi-line code blocks
-    if '\n' in text_stripped and ('{' in text_stripped or ';' in text_stripped):
-        line_count = len(text_stripped.split('\n'))
-        if line_count > 3 and (text_stripped.count('{') + text_stripped.count(';')) > 2:
-            print("[is_code_or_dict] Detected potential multi-line code block")
-            return True
+    # if '\n' in text_stripped and ('{' in text_stripped or ';' in text_stripped):
+    #     line_count = len(text_stripped.split('\n'))
+    #     if line_count > 3 and (text_stripped.count('{') + text_stripped.count(';')) > 2:
+    #         print("[is_code_or_dict] Detected potential multi-line code block")
+    #         return True
     
     return False
 
@@ -2280,6 +2280,7 @@ def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID):
     # Check if message contains code or should be blocked
     if is_code_or_dict(text):
         print(f"[send_whatsapp_message] BLOCKED: Message contains code or dictionary content. Not sending to {to}")
+        sendTelegram(f"⚠️ Blocked WhatsApp message to {to}\nReason: Contains code or dictionary content\n\nMessage preview:\n{text[:500]}")
         return {"status": "blocked", "message": "Message contains code or dictionary content and was not sent"}
     
     print("text is safe to send")
