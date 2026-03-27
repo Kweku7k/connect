@@ -2221,19 +2221,19 @@ def is_code_or_dict(text):
         except (json.JSONDecodeError, ValueError):
             pass
     
-    # Check for Python code patterns
-    python_keywords = ['def ', 'class ', 'import ', 'from ', 'if __name__', '@', 'def(', 'async def', 'lambda ', 'try:', 'except:', 'finally:']
-    for keyword in python_keywords:
-        if keyword in text_stripped:
-            print(f"[is_code_or_dict] Detected Python code ('{keyword}')")
-            return True
+    # # Check for Python code patterns
+    # python_keywords = ['def ', 'class ', 'import ', 'from ', 'if __name__', '@', 'def(', 'async def', 'lambda ', 'try:', 'except:', 'finally:']
+    # for keyword in python_keywords:
+    #     if keyword in text_stripped:
+    #         print(f"[is_code_or_dict] Detected Python code ('{keyword}')")
+    #         return True
     
-    # Check for JavaScript/TypeScript patterns
-    js_keywords = ['function ', 'const ', 'let ', 'var ', 'async function', '=>', '$(', 'document.', 'console.']
-    for keyword in js_keywords:
-        if keyword in text_stripped:
-            print(f"[is_code_or_dict] Detected JavaScript code ('{keyword}')")
-            return True
+    # # Check for JavaScript/TypeScript patterns
+    # js_keywords = ['function ', 'const ', 'let ', 'var ', 'async function', '=>', '$(', 'document.', 'console.']
+    # for keyword in js_keywords:
+    #     if keyword in text_stripped:
+    #         print(f"[is_code_or_dict] Detected JavaScript code ('{keyword}')")
+    #         return True
     
     # Check for HTML/XML patterns
     if ('<' in text_stripped and '>' in text_stripped and 
