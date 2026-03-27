@@ -2201,6 +2201,62 @@ def send_typing_indicator(wa_message_id, phone_number_id):
         print(f"[send_typing_indicator] Exception occurred: {e}")
         return {"error": str(e)}
 
+def is_code_or_dict(text):
+    """
+    Check if the text contains code, dictionaries, or other non-regular-message content.
+    Returns True if content should be blocked, False if it's safe to send.
+    """
+    if not isinstance(text, str):
+        return True
+    
+    text_stripped = text.strip()
+    
+    # Check for JSON/dictionaries
+    if ((text_stripped.startswith('{') and text_stripped.endswith('}')) or 
+        (text_stripped.startswith('[') and text_stripped.endswith(']'))):
+        try:
+            json.loads(text_stripped)
+            print("[is_code_or_dict] Detected JSON/dictionary format")
+            return True
+        except (json.JSONDecodeError, ValueError):
+            pass
+    
+    # Check for Python code patterns
+    python_keywords = ['def ', 'class ', 'import ', 'from ', 'if __name__', '@', 'def(', 'async def', 'lambda ', 'try:', 'except:', 'finally:']
+    for keyword in python_keywords:
+        if keyword in text_stripped:
+            print(f"[is_code_or_dict] Detected Python code ('{keyword}')")
+            return True
+    
+    # Check for JavaScript/TypeScript patterns
+    js_keywords = ['function ', 'const ', 'let ', 'var ', 'async function', '=>', '$(', 'document.', 'console.']
+    for keyword in js_keywords:
+        if keyword in text_stripped:
+            print(f"[is_code_or_dict] Detected JavaScript code ('{keyword}')")
+            return True
+    
+    # Check for HTML/XML patterns
+    if ('<' in text_stripped and '>' in text_stripped and 
+        any(tag in text_stripped.lower() for tag in ['<html', '<div', '<span', '<script', '<?php', '<%', '<%='])):
+        print("[is_code_or_dict] Detected HTML/XML/template code")
+        return True
+    
+    # Check for SQL patterns
+    sql_keywords = ['SELECT ', 'INSERT ', 'UPDATE ', 'DELETE ', 'DROP ', 'CREATE TABLE']
+    for keyword in sql_keywords:
+        if keyword in text_stripped.upper():
+            print(f"[is_code_or_dict] Detected SQL code ('{keyword}')")
+            return True
+    
+    # Check for suspicious patterns like multi-line code blocks
+    if '\n' in text_stripped and ('{' in text_stripped or ';' in text_stripped):
+        line_count = len(text_stripped.split('\n'))
+        if line_count > 3 and (text_stripped.count('{') + text_stripped.count(';')) > 2:
+            print("[is_code_or_dict] Detected potential multi-line code block")
+            return True
+    
+    return False
+
 def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID):
     url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
 
@@ -2213,24 +2269,20 @@ def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID):
     print(text)
     
     if isinstance(text, dict):
-        text = text['response'] 
+        text = text.get('response', str(text))
     
     if isinstance(text, dict):
         text = str(text)
     
-    # Check if text is JSON data (starts with { or [ and ends with } or ])
-    if (isinstance(text, str) and 
-        ((text.strip().startswith('{') and text.strip().endswith('}')) or 
-         (text.strip().startswith('[') and text.strip().endswith(']')))):
-        try:
-            parsed = json.loads(text)
-            # If it successfully parses as JSON, don't send it
-            print("Text is JSON data, not sending message.")
-            return
-        except (json.JSONDecodeError, ValueError):
-            pass
-    else:
-        print("text is safe")
+    # Convert to string if not already
+    text = str(text) if text is not None else ""
+    
+    # Check if message contains code or should be blocked
+    if is_code_or_dict(text):
+        print(f"[send_whatsapp_message] BLOCKED: Message contains code or dictionary content. Not sending to {to}")
+        return {"status": "blocked", "message": "Message contains code or dictionary content and was not sent"}
+    
+    print("text is safe to send")
     
     payload = {
         "messaging_product": "whatsapp",
@@ -2660,6 +2712,12 @@ def verify_token():
             else:
                 reply_text = api_response.get("response", api_response.get("message", "I received your message."))
                 print("[Webhook] Sending WhatsApp text message:", reply_text)
+                
+                # Trigger typing indicator if the response is the specific message
+                if reply_text == "Let us check that for you." and wa_message_id:
+                    print("[Webhook] Detected 'Let us check that for you.' - triggering typing indicator")
+                    send_typing_indicator(wa_message_id, phone_number_id)
+                
                 send_whatsapp_message(sender_wa_id, reply_text, phone_number_id)
 
         else:
