@@ -2667,7 +2667,7 @@ def verify_token():
     if wa_message_id:
         typing_response = send_typing_indicator(wa_message_id, phone_number_id)
 
-        print("=====typing_respons====")
+        print("=====typing_response====")
         print(typing_response)
     
     appId = user.appId
@@ -2711,14 +2711,23 @@ def verify_token():
                 send_whatsapp_document_message(sender_wa_id, document, phone_number_id)
             
             else:
-                reply_text = api_response.get("response", api_response.get("message", "I received your message."))
+                response_payload = api_response.get("response", {})
+                if isinstance(response_payload, dict):
+                    reply_text = str(response_payload.get("response", "")).strip()
+                else:
+                    reply_text = str(response_payload).strip()
+
+                if not reply_text:
+                    reply_text = api_response.get("message", "I received your message.")
+
+                lowered_reply = str(reply_text).lower().strip()
+                if lowered_reply in ["typing", "typing...", "...typing", "is typing"]:
+                    if wa_message_id:
+                        print("[Webhook] Typing text detected - triggering typing indicator")
+                        send_typing_indicator(wa_message_id, phone_number_id)
+                    return "EVENT_RECEIVED", 200
+
                 print("[Webhook] Sending WhatsApp text message:", reply_text)
-                
-                # Trigger typing indicator if the response is the specific message
-                if reply_text == "Let us check that for you." and wa_message_id:
-                    print("[Webhook] Detected 'Let us check that for you.' - triggering typing indicator")
-                    send_typing_indicator(wa_message_id, phone_number_id)
-                
                 send_whatsapp_message(sender_wa_id, reply_text, phone_number_id)
 
         else:
