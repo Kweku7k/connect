@@ -2277,20 +2277,18 @@ def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID):
     # Convert to string if not already
     text = str(text) if text is not None else ""
     
-    # Check if message contains code or should be blocked
-    # if is_code_or_dict(text):
-    #     print(f"[send_whatsapp_message] BLOCKED: Message contains code or dictionary content. Not sending to {to}")
-    #     sendTelegram(f"⚠️ Blocked WhatsApp message to {to}\nReason: Contains code or dictionary content\n\nMessage preview:\n{text[:500]}")
-    #     return {"status": "blocked", "message": "Message contains code or dictionary content and was not sent"}
-    
-    # print("text is safe to send")
-    
-    payload = {
-        "messaging_product": "whatsapp",
-        "to": to,
-        "type": "text",
-        "text": {"body": text}
-    }   
+    if text == "typing":
+        # send_typing_indicator()
+        typing_response = send_typing_indicator("wamid.HBgMMjMzNTQ1OTc3NzkxFQIAEhgUM0JBRjA0OERBRjFCNjYxMUFBQ0MA", phone_number_id)
+        print("=====typing_response====")
+        print(typing_response)
+    else:
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": to,
+            "type": "text",
+            "text": {"body": text}
+        }
     
     print("Sending WhatsApp message to: ", to)
     pprint.pprint(payload)

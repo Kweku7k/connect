@@ -75,6 +75,9 @@ def get_user_data_from_whatsapp_payload(body):
         print("Name:", name)
         print("WA ID:", wa_id)
         print("============")
+        
+        # 
+        
 
         return {
             "type": "message",
