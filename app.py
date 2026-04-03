@@ -2724,6 +2724,7 @@ def verify_token():
                 if lowered_reply in ["typing", "typing...", "...typing", "is typing"]:
                     if wa_message_id:
                         print("[Webhook] Typing text detected - triggering typing indicator")
+                        print("=====typing_response====")
                         send_typing_indicator(wa_message_id, phone_number_id)
                     return "EVENT_RECEIVED", 200
 
