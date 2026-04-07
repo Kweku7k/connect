@@ -2870,7 +2870,8 @@ def verify_token():
                 if q_message_id:
                     if phone_number_id:
                         print("[Webhook] respond=False, triggering typing indicator using q message_id")
-                        send_typing_indicator(q_message_id, phone_number_id)
+                        pass
+                        # send_typing_indicator(q_message_id, phone_number_id) #TODO: Reactivate!
                     else:
                         print("[Webhook] phone_number_id missing; typing indicator not sent.")
 
