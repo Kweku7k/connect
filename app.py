@@ -2911,7 +2911,7 @@ def verify_token():
                     reply_text = api_response.get("message", "I received your message.")
 
                 lowered_reply = str(reply_text).lower().strip()
-                if lowered_reply in ["typing", "typing...", "...typing", "is typing"]:
+                if lowered_reply in ["typing", "typing...", "...typing", "is typing", "I am processing this request"]:
                     typing_indicator_message_id = response_payload.get("message_id") or wa_message_id
                     if typing_indicator_message_id:
                         print("[Webhook] Typing text detected - triggering typing indicator")
