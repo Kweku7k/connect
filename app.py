@@ -399,6 +399,26 @@ class Session(db.Model):
         return f'<Session {self.phone_number}: {self.session_id}>'
 
 
+class MessageLog(db.Model):
+    __tablename__ = 'messagelog'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.String(255), nullable=False)
+    message_id = db.Column(db.String(255), nullable=False, unique=True)
+    phone_number = db.Column(db.String(20), nullable=False)
+    status = db.Column(db.String(50), default='sent')  # sent, delivered, read, failed
+    message_type = db.Column(db.String(50))  # text, image, document, template
+    message_content = db.Column(db.Text)
+    phone_number_id = db.Column(db.String(255))
+    appId = db.Column(db.String(255))
+    endpoint = db.Column(db.String(500))  # Store the callback endpoint
+    callback_sent = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    
+    def __repr__(self):
+        return f'<MessageLog {self.message_id}: {self.status}>'
+
 
 def reportError(e, message = None):
     print(e)
@@ -2169,6 +2189,63 @@ def send_message_to_endpoint(message, session_id, body, appId, endpoint=None):
     except Exception as e:
         print(f"General Exception occurred: {e}")
         return None
+
+def send_delivery_callback(session_id, message_id, phone_number=None, status="delivered", endpoint=None):
+    """
+    Send a delivery callback to the external endpoint (e.g., q.prestoghana.com/delivery-update)
+    """
+    print(f"[send_delivery_callback] Called with session_id={session_id}, message_id={message_id}, status={status}")
+    
+    if not endpoint:
+        endpoint = "https://q.prestoghana.com/delivery-update"
+    else:
+        endpoint = str(endpoint).strip()
+        if "q.prestoghana.com" in endpoint:
+            endpoint = "https://q.prestoghana.com/delivery-update"
+    
+    try:
+        # Prepare callback payload
+        callback_payload = {
+            "session_id": session_id,
+            "message_id": message_id,
+            "status": status,
+            "details": {
+                "source": "client",
+                "event": "message_received_by_user"
+            }
+        }
+        
+        headers = {
+            "Content-Type": "application/json"
+        }
+        
+        print(f"[send_delivery_callback] Sending callback to {endpoint}")
+        print(f"[send_delivery_callback] Payload: {callback_payload}")
+        
+        response = requests.post(endpoint, json=callback_payload, headers=headers, timeout=10)
+        
+        print(f"[send_delivery_callback] Response status code: {response.status_code}")
+        print(f"[send_delivery_callback] Response text: {response.text}")
+        
+        # Update MessageLog to track callback sent when this message exists in local logs.
+        try:
+            msg_log = MessageLog.query.filter_by(message_id=message_id).first()
+            if msg_log:
+                msg_log.callback_sent = True
+                msg_log.status = status
+                db.session.commit()
+                print(f"[send_delivery_callback] MessageLog updated for message_id={message_id}")
+        except Exception as e:
+            print(f"[send_delivery_callback] Error updating MessageLog: {e}")
+        
+        return True
+        
+    except requests.exceptions.RequestException as e:
+        print(f"[send_delivery_callback] RequestException occurred: {e}")
+        return False
+    except Exception as e:
+        print(f"[send_delivery_callback] General Exception occurred: {e}")
+        return False
     
 def send_typing_indicator(wa_message_id, phone_number_id):
     print(f"[send_typing_indicator] Called with wa_message_id={wa_message_id}, phone_number_id={phone_number_id}")
@@ -2257,7 +2334,32 @@ def is_code_or_dict(text):
     
     return False
 
-def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID):
+def log_message_to_db(session_id, message_id, phone_number, message_type, message_content, phone_number_id, appId, endpoint):
+    """
+    Log a sent message to MessageLog table
+    """
+    try:
+        msg_log = MessageLog(
+            session_id=session_id,
+            message_id=message_id,
+            phone_number=phone_number,
+            status='sent',
+            message_type=message_type,
+            message_content=message_content,
+            phone_number_id=phone_number_id,
+            appId=appId,
+            endpoint=endpoint
+        )
+        db.session.add(msg_log)
+        db.session.commit()
+        print(f"[log_message_to_db] Message logged: session_id={session_id}, message_id={message_id}")
+        return True
+    except Exception as e:
+        print(f"[log_message_to_db] Error logging message: {e}")
+        db.session.rollback()
+        return False
+
+def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID, session_id=None, appId=None, endpoint=None):
     url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
 
     headers = {
@@ -2293,11 +2395,27 @@ def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID):
     print("Sending WhatsApp message to: ", to)
     pprint.pprint(payload)
 
-    response = requests.post(url, headers=headers, json=payload)
-    print(f"WhatsApp API response: {response.json()}")
-    return response.json()
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response_data = response.json()
+        print(f"WhatsApp API response: {response_data}")
+        
+        # Extract message_id from response
+        message_id = response_data.get("messages", [{}])[0].get("id") if response_data.get("messages") else None
+        
+        if message_id and session_id:
+            # Log the message
+            log_message_to_db(session_id, message_id, to, 'text', text, phone_number_id, appId, endpoint)
+            
+            # Send delivery callback after a short delay to allow WhatsApp to process
+            print(f"[send_whatsapp_message] Message logged with ID: {message_id}")
+        
+        return response_data
+    except Exception as e:
+        print(f"[send_whatsapp_message] Error sending message: {e}")
+        return {"error": str(e)}
 
-def send_whatsapp_document_message(to, text, document, phone_number_id=PHONE_NUMBER_ID):
+def send_whatsapp_document_message(to, text, document, phone_number_id=PHONE_NUMBER_ID, session_id=None, appId=None, endpoint=None):
     print(f"[send_whatsapp_document_message] Called with to={to}, text={text}, document={document}, phone_number_id={phone_number_id}")
     url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
     print(f"[send_whatsapp_document_message] URL: {url}")
@@ -2334,14 +2452,24 @@ def send_whatsapp_document_message(to, text, document, phone_number_id=PHONE_NUM
 
     try:
         response = requests.post(url, headers=headers, json=payload)
+        response_data = response.json()
         print(f"[send_whatsapp_document_message] WhatsApp API response status: {response.status_code}")
-        print(f"[send_whatsapp_document_message] WhatsApp API response JSON: {response.json()}")
-        return response.json()
+        print(f"[send_whatsapp_document_message] WhatsApp API response JSON: {response_data}")
+        
+        # Extract message_id from response
+        message_id = response_data.get("messages", [{}])[0].get("id") if response_data.get("messages") else None
+        
+        if message_id and session_id:
+            # Log the message
+            log_message_to_db(session_id, message_id, to, 'document', document, phone_number_id, appId, endpoint)
+            print(f"[send_whatsapp_document_message] Message logged with ID: {message_id}")
+        
+        return response_data
     except Exception as e:
         print(f"[send_whatsapp_document_message] Exception occurred: {e}")
         return {"error": str(e)}
 
-def send_whatsapp_image_message(to, text, image, phone_number_id=PHONE_NUMBER_ID):
+def send_whatsapp_image_message(to, text, image, phone_number_id=PHONE_NUMBER_ID, session_id=None, appId=None, endpoint=None):
     print(f"[send_whatsapp_image_message] Called with to={to}, text={text}, image={image}, phone_number_id={phone_number_id}")
     url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
     print(f"[send_whatsapp_image_message] URL: {url}")
@@ -2374,15 +2502,25 @@ def send_whatsapp_image_message(to, text, image, phone_number_id=PHONE_NUMBER_ID
 
     try:
         response = requests.post(url, headers=headers, json=payload)
+        response_data = response.json()
         print(f"[send_whatsapp_image_message] WhatsApp API response status: {response.status_code}")
-        print(f"[send_whatsapp_image_message] WhatsApp API response JSON: {response.json()}")
-        return response.json()
+        print(f"[send_whatsapp_image_message] WhatsApp API response JSON: {response_data}")
+        
+        # Extract message_id from response
+        message_id = response_data.get("messages", [{}])[0].get("id") if response_data.get("messages") else None
+        
+        if message_id and session_id:
+            # Log the message
+            log_message_to_db(session_id, message_id, to, 'image', image, phone_number_id, appId, endpoint)
+            print(f"[send_whatsapp_image_message] Message logged with ID: {message_id}")
+        
+        return response_data
     except Exception as e:
         print(f"[send_whatsapp_image_message] Exception occurred: {e}")
         return {"error": str(e)}
 
-def send_whatsapp_template_message(to, template_data):
-    url = f"https://graph.facebook.com/v21.0/{PHONE_NUMBER_ID}/messages"
+def send_whatsapp_template_message(to, template_data, session_id=None, appId=None, endpoint=None, phone_number_id=PHONE_NUMBER_ID):
+    url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
     headers = {
         "Authorization": f"Bearer {WHATSAPP_TOKEN}",
         "Content-Type": "application/json"
@@ -2395,11 +2533,27 @@ def send_whatsapp_template_message(to, template_data):
     }
     print("Sending WhatsApp template message to: ", to)
     pprint.pprint(payload)
-    response = requests.post(url, headers=headers, json=payload)
-    print(f"WhatsApp API response: {response.json()}")
-    return response.json()
+    
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response_data = response.json()
+        print(f"WhatsApp API response: {response_data}")
+        
+        # Extract message_id from response
+        message_id = response_data.get("messages", [{}])[0].get("id") if response_data.get("messages") else None
+        
+        if message_id and session_id:
+            # Log the message
+            template_name = template_data.get("name", "template")
+            log_message_to_db(session_id, message_id, to, 'template', template_name, phone_number_id, appId, endpoint)
+            print(f"[send_whatsapp_template_message] Message logged with ID: {message_id}")
+        
+        return response_data
+    except Exception as e:
+        print(f"[send_whatsapp_template_message] Error: {e}")
+        return {"error": str(e)}
 
-def send_whatsapp_otp_template_message(to, otp):
+def send_whatsapp_otp_template_message(to, otp, session_id=None, appId=None, endpoint=None):
     template_data = {
         "name": "otp",
         "language": {
@@ -2445,10 +2599,24 @@ def send_whatsapp_otp_template_message(to, otp):
     print("Sending WhatsApp template message to: ", to)
     pprint.pprint(payload)
     
-    response = requests.post(url, headers=headers, json=payload)
-    
-    print(f"WhatsApp API response: {response.json()}")
-    return response.json()
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        response_data = response.json()
+        
+        print(f"WhatsApp API response: {response_data}")
+        
+        # Extract message_id from response
+        message_id = response_data.get("messages", [{}])[0].get("id") if response_data.get("messages") else None
+        
+        if message_id and session_id:
+            # Log the message
+            log_message_to_db(session_id, message_id, to, 'template', 'otp', PHONE_NUMBER_ID, appId, endpoint)
+            print(f"[send_whatsapp_otp_template_message] Message logged with ID: {message_id}")
+        
+        return response_data
+    except Exception as e:
+        print(f"[send_whatsapp_otp_template_message] Error: {e}")
+        return {"error": str(e)}
     
 def get_whatsapp_media_url(media_id: str) -> str:
     url = f"https://graph.facebook.com/v19.0/{media_id}"
@@ -2689,27 +2857,51 @@ def verify_token():
         # Prepare reply text
         print("[Webhook] api_response:", api_response)
         if api_response:
-            if api_response.get("response").get("respond") == False:
+            response_payload = api_response.get("response", {})
+            if not isinstance(response_payload, dict):
+                print("[Webhook] Invalid response payload type from endpoint.")
+                response_payload = {}
+
+            q_message_id = response_payload.get("message_id")
+
+            if response_payload.get("respond") is False:
                 print("[Webhook] respond=False, skipping reply.")
+
+                if q_message_id:
+                    if phone_number_id:
+                        print("[Webhook] respond=False, triggering typing indicator using q message_id")
+                        send_typing_indicator(q_message_id, phone_number_id)
+                    else:
+                        print("[Webhook] phone_number_id missing; typing indicator not sent.")
+
+                    callback_success = send_delivery_callback(
+                        session_id=session_id,
+                        message_id=q_message_id,
+                        status="delivered",
+                        endpoint="https://q.prestoghana.com/delivery-update"
+                    )
+                    print(f"[Webhook] respond=False delivery callback result: {callback_success}")
+                else:
+                    print("[Webhook] respond=False but no message_id from q; callback skipped.")
+
                 return "EVENT_RECEIVED", 200
 
-            if api_response['response'].get("template", None) is not None:
-                template = api_response['response'].get("template")
+            if response_payload.get("template", None) is not None:
+                template = response_payload.get("template")
                 print("[Webhook] Sending WhatsApp template message:", template)
-                send_whatsapp_template_message(sender_wa_id, template, phone_number_id)
+                send_whatsapp_template_message(sender_wa_id, template, session_id=session_id, appId=appId, endpoint=endpoint, phone_number_id=phone_number_id)
             
-            elif api_response['response'].get("image", None) is not None:
-                image = api_response['response'].get("image")
+            elif response_payload.get("image", None) is not None:
+                image = response_payload.get("image")
                 print("[Webhook] Sending WhatsApp image message:", image)
-                send_whatsapp_image_message(sender_wa_id, image, phone_number_id)
+                send_whatsapp_image_message(sender_wa_id, image, image, phone_number_id=phone_number_id, session_id=session_id, appId=appId, endpoint=endpoint)
             
-            elif api_response['response'].get("document", None) is not None:
-                document = api_response['response'].get("document")
-                print("[Webhook] Sending WhatsApp image message:", document)
-                send_whatsapp_document_message(sender_wa_id, document, phone_number_id)
+            elif response_payload.get("document", None) is not None:
+                document = response_payload.get("document")
+                print("[Webhook] Sending WhatsApp document message:", document)
+                send_whatsapp_document_message(sender_wa_id, document, document, phone_number_id=phone_number_id, session_id=session_id, appId=appId, endpoint=endpoint)
             
             else:
-                response_payload = api_response.get("response", {})
                 if isinstance(response_payload, dict):
                     reply_text = str(response_payload.get("response", "")).strip()
                 else:
@@ -2720,19 +2912,66 @@ def verify_token():
 
                 lowered_reply = str(reply_text).lower().strip()
                 if lowered_reply in ["typing", "typing...", "...typing", "is typing"]:
-                    if wa_message_id:
+                    typing_indicator_message_id = response_payload.get("message_id") or wa_message_id
+                    if typing_indicator_message_id:
                         print("[Webhook] Typing text detected - triggering typing indicator")
                         print("=====typing_response====")
-                        send_typing_indicator(wa_message_id, phone_number_id)
+                        send_typing_indicator(typing_indicator_message_id, phone_number_id)
                     return "EVENT_RECEIVED", 200
 
                 print("[Webhook] Sending WhatsApp text message:", reply_text)
-                send_whatsapp_message(sender_wa_id, reply_text, phone_number_id)
+                send_whatsapp_message(sender_wa_id, reply_text, phone_number_id=phone_number_id, session_id=session_id, appId=appId, endpoint=endpoint)
 
         else:
             pass
         
         # Send reply back to user
+    
+    # ──────────────────── HANDLE STATUS UPDATES (DELIVERY CONFIRMATION) ─────────────────────
+    elif data_response.get("type") == "status":
+        print("[Webhook] Status update received")
+        
+        try:
+            # Extract status information from value object
+            entry = body.get("entry", [])[0]
+            changes = entry.get("changes", [])[0]
+            value = changes.get("value", {})
+            statuses = value.get("statuses", [])
+            
+            if statuses:
+                status_obj = statuses[0]
+                message_id = status_obj.get("id")
+                status = status_obj.get("status")  # sent, delivered, read, failed
+                recipient_id = status_obj.get("recipient_id")
+                
+                print(f"[Webhook] Status update: message_id={message_id}, status={status}, recipient_id={recipient_id}")
+                
+                # Look up the message in MessageLog
+                msg_log = MessageLog.query.filter_by(message_id=message_id).first()
+                
+                if msg_log:
+                    print(f"[Webhook] Found message in log: {msg_log}")
+                    
+                    # Update the status in MessageLog
+                    msg_log.status = status
+                    db.session.commit()
+                    
+                    # Send delivery callback to the endpoint
+                    if status.lower() in ["delivered", "read"]:
+                        print(f"[Webhook] Sending delivery callback for message_id={message_id}")
+                        callback_success = send_delivery_callback(
+                            session_id=msg_log.session_id,
+                            message_id=message_id,
+                            phone_number=msg_log.phone_number,
+                            status=status,
+                            endpoint=msg_log.endpoint
+                        )
+                        print(f"[Webhook] Callback result: {callback_success}")
+                else:
+                    print(f"[Webhook] Message not found in log for message_id={message_id}")
+                    
+        except Exception as e:
+            print(f"[Webhook] Error handling status update: {e}")
         
     return "EVENT_RECEIVED", 200
 
