@@ -2324,11 +2324,11 @@ def is_code_or_dict(text):
         return True
     
     # Check for SQL patterns
-    sql_keywords = ['SELECT ', 'INSERT ', 'UPDATE ', 'DELETE ', 'DROP ', 'CREATE TABLE']
-    for keyword in sql_keywords:
-        if keyword in text_stripped.upper():
-            print(f"[is_code_or_dict] Detected SQL code ('{keyword}')")
-            return True
+    # sql_keywords = ['SELECT ', 'INSERT ', 'UPDATE ', 'DELETE ', 'DROP ', 'CREATE TABLE']
+    # for keyword in sql_keywords:
+    #     if keyword in text_stripped.upper():
+    #         print(f"[is_code_or_dict] Detected SQL code ('{keyword}')")
+    #         return True
     
     # Check for suspicious patterns like multi-line code blocks
     # if '\n' in text_stripped and ('{' in text_stripped or ';' in text_stripped):
