@@ -2287,6 +2287,11 @@ def is_code_or_dict(text):
         return True
     
     text_stripped = text.strip()
+
+    # Block leaked tool-call payloads from being sent to end users.
+    if "<function_calls>" in text_stripped.lower():
+        print("[is_code_or_dict] Detected function call payload")
+        return True
     
     # Check for JSON/dictionaries
     if ((text_stripped.startswith('{') and text_stripped.endswith('}')) or 
@@ -2378,20 +2383,18 @@ def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID, session_id=
     
     # Convert to string if not already
     text = str(text) if text is not None else ""
-    
-    if text == "typing" or text == "I am processing this request":
-        pass
-        # send_typing_indicator()
-        # typing_response = send_typing_indicator("wamid.HBgMMjMzNTQ1OTc3NzkxFQIAEhgUM0JBRjA0OERBRjFCNjYxMUFBQ0MA", phone_number_id)
-        # print("=====typing_response====")
-        # print(typing_response)
-    else:
-        payload = {
-            "messaging_product": "whatsapp",
-            "to": to,
-            "type": "text",
-            "text": {"body": text}
-        }
+
+    # Safety gate: do not send structured tool/code payloads to users.
+    if is_code_or_dict(text):
+        print("[send_whatsapp_message] Blocked unsafe content")
+        return {"blocked": True, "reason": "unsafe_content"}
+
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": to,
+        "type": "text",
+        "text": {"body": text}
+    }
     
     print("Sending WhatsApp message to: ", to)
     pprint.pprint(payload)
@@ -2869,6 +2872,13 @@ def verify_token():
             if response_payload.get("respond") is False:
                 print("[Webhook] respond=False, skipping reply.")
 
+                response_text = str(response_payload.get("response", ""))
+
+                # Do not mark delivered when response payload is unsafe.
+                if is_code_or_dict(response_text):
+                    print("[Webhook] Unsafe response content detected; skipping delivered callback.")
+                    return "EVENT_RECEIVED", 200
+
                 if q_message_id:
                     if phone_number_id:
                         print("[Webhook] respond=False, triggering typing indicator using q message_id")
@@ -2910,7 +2920,7 @@ def verify_token():
                     reply_text = str(response_payload).strip()
 
                 if not reply_text:
-                    reply_text = api_response.get("message", "I received your message.")
+                    reply_text = api_response.get("message", "Oops, Q is unavailable now, please try again later.")
 
                 lowered_reply = str(reply_text).lower().strip()
                 if lowered_reply in ["typing", "typing...", "...typing", "is typing", "I am processing this request"]:
