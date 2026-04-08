@@ -2380,10 +2380,11 @@ def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID, session_id=
     text = str(text) if text is not None else ""
     
     if text == "typing" or text == "I am processing this request":
+        pass
         # send_typing_indicator()
-        typing_response = send_typing_indicator("wamid.HBgMMjMzNTQ1OTc3NzkxFQIAEhgUM0JBRjA0OERBRjFCNjYxMUFBQ0MA", phone_number_id)
-        print("=====typing_response====")
-        print(typing_response)
+        # typing_response = send_typing_indicator("wamid.HBgMMjMzNTQ1OTc3NzkxFQIAEhgUM0JBRjA0OERBRjFCNjYxMUFBQ0MA", phone_number_id)
+        # print("=====typing_response====")
+        # print(typing_response)
     else:
         payload = {
             "messaging_product": "whatsapp",
