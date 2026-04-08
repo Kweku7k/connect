@@ -7,6 +7,8 @@ import hmac
 import os
 import pprint
 import smtplib
+import threading
+import time
 from flask import Flask, Response, abort, flash, jsonify,redirect,url_for,render_template,request, session
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
@@ -2745,6 +2747,138 @@ CERTIFICATE = """CmQKIAiti7GLlvCbAhIGZW50OndhIgdNciBXdSdzUI7fzMwGGkARy8E9L3QNigR
 def whatsapp_verify():  
     return Response(CERTIFICATE, mimetype="text/plain")
 
+
+def process_incoming_message_after_delay(
+    delay_seconds,
+    message_text,
+    session_id,
+    body,
+    appId,
+    endpoint,
+    sender_wa_id,
+    phone_number_id,
+    wa_message_id,
+):
+    """
+    Non-blocking worker that waits a short delay, then polls q endpoint and handles the full reply flow.
+    """
+    with app.app_context():
+        try:
+            time.sleep(delay_seconds)
+
+            api_response = send_message_to_endpoint(message_text, session_id, body, appId, endpoint)
+            print('[api_response]:')
+            pprint.pprint(api_response)
+
+            print("[Webhook] api_response:", api_response)
+            if not api_response:
+                return
+
+            response_payload = api_response.get("response", {})
+            if not isinstance(response_payload, dict):
+                print("[Webhook] Invalid response payload type from endpoint.")
+                response_payload = {}
+
+            q_message_id = response_payload.get("message_id")
+
+            if response_payload.get("respond") is False:
+                print("[Webhook] respond=False, skipping reply.")
+
+                response_text = str(response_payload.get("response", ""))
+
+                # Do not mark delivered when response payload is unsafe.
+                if is_code_or_dict(response_text):
+                    print("[Webhook] Unsafe response content detected; skipping delivered callback.")
+                    return
+
+                if q_message_id:
+                    if phone_number_id:
+                        print("[Webhook] respond=False, triggering typing indicator using q message_id")
+                        send_typing_indicator(q_message_id, phone_number_id)
+                    else:
+                        print("[Webhook] phone_number_id missing; typing indicator not sent.")
+
+                    callback_success = send_delivery_callback(
+                        session_id=session_id,
+                        message_id=q_message_id,
+                        status="delivered",
+                        endpoint="https://q.prestoghana.com/delivery-update"
+                    )
+                    print(f"[Webhook] respond=False delivery callback result: {callback_success}")
+                else:
+                    print("[Webhook] respond=False but no message_id from q; callback skipped.")
+
+                return
+
+            if response_payload.get("template", None) is not None:
+                template = response_payload.get("template")
+                print("[Webhook] Sending WhatsApp template message:", template)
+                send_whatsapp_template_message(
+                    sender_wa_id,
+                    template,
+                    session_id=session_id,
+                    appId=appId,
+                    endpoint=endpoint,
+                    phone_number_id=phone_number_id,
+                )
+
+            elif response_payload.get("image", None) is not None:
+                image = response_payload.get("image")
+                print("[Webhook] Sending WhatsApp image message:", image)
+                send_whatsapp_image_message(
+                    sender_wa_id,
+                    image,
+                    image,
+                    phone_number_id=phone_number_id,
+                    session_id=session_id,
+                    appId=appId,
+                    endpoint=endpoint,
+                )
+
+            elif response_payload.get("document", None) is not None:
+                document = response_payload.get("document")
+                print("[Webhook] Sending WhatsApp document message:", document)
+                send_whatsapp_document_message(
+                    sender_wa_id,
+                    document,
+                    document,
+                    phone_number_id=phone_number_id,
+                    session_id=session_id,
+                    appId=appId,
+                    endpoint=endpoint,
+                )
+
+            else:
+                if isinstance(response_payload, dict):
+                    reply_text = str(response_payload.get("response", "")).strip()
+                else:
+                    reply_text = str(response_payload).strip()
+
+                if not reply_text:
+                    reply_text = api_response.get("message", "Oops, Q is unavailable now, please try again later.")
+
+                lowered_reply = str(reply_text).lower().strip()
+                if lowered_reply in ["typing", "typing...", "...typing", "is typing", "i am processing this request"]:
+                    typing_indicator_message_id = response_payload.get("message_id") or wa_message_id
+                    if typing_indicator_message_id:
+                        print("[Webhook] Typing text detected - triggering typing indicator")
+                        print("=====typing_response====")
+                        send_typing_indicator(typing_indicator_message_id, phone_number_id)
+                    return
+
+                print("[Webhook] Sending WhatsApp text message:", reply_text)
+                send_whatsapp_message(
+                    sender_wa_id,
+                    reply_text,
+                    phone_number_id=phone_number_id,
+                    session_id=session_id,
+                    appId=appId,
+                    endpoint=endpoint,
+                )
+
+        except Exception as e:
+            print(f"[Webhook] Error in background message processing: {e}")
+
 # Verification
 @app.route("/wa/callback", methods=["GET", "POST"])
 def verify_token():
@@ -2852,90 +2986,112 @@ def verify_token():
         # Get or create session for this phone number
         session_id = get_or_create_session(sender_wa_id, appId, token)
         update_session_timestamp(sender_wa_id)
-        
-        # Send message and session to endpoint
-        # THIS IS TO GET THE RESPONSE FROM THE AI SERVER
-        api_response = send_message_to_endpoint(message_text, session_id, body, appId, endpoint)
-        print('[api_response]:')
-        pprint.pprint(api_response)
-        
-        # Prepare reply text
-        print("[Webhook] api_response:", api_response)
-        if api_response:
-            response_payload = api_response.get("response", {})
-            if not isinstance(response_payload, dict):
-                print("[Webhook] Invalid response payload type from endpoint.")
-                response_payload = {}
 
-            q_message_id = response_payload.get("message_id")
+        # Non-blocking: wait 6 seconds, then process q polling/reply flow in a daemon thread.
+        worker = threading.Thread(
+            target=process_incoming_message_after_delay,
+            kwargs={
+                "delay_seconds": 6,
+                "message_text": message_text,
+                "session_id": session_id,
+                "body": body,
+                "appId": appId,
+                "endpoint": endpoint,
+                "sender_wa_id": sender_wa_id,
+                "phone_number_id": phone_number_id,
+                "wa_message_id": wa_message_id,
+            },
+            daemon=True,
+        )
+        worker.start()
+        print(f"[Webhook] Spawned background poll thread for session_id={session_id}")
 
-            if response_payload.get("respond") is False:
-                print("[Webhook] respond=False, skipping reply.")
+        # Legacy synchronous flow intentionally commented out per request.
+        # # Send message and session to endpoint
+        # # THIS IS TO GET THE RESPONSE FROM THE AI SERVER
+        # api_response = send_message_to_endpoint(message_text, session_id, body, appId, endpoint)
+        # print('[api_response]:')
+        # pprint.pprint(api_response)
+        #
+        # # Prepare reply text
+        # print("[Webhook] api_response:", api_response)
+        # if api_response:
+        #     response_payload = api_response.get("response", {})
+        #     if not isinstance(response_payload, dict):
+        #         print("[Webhook] Invalid response payload type from endpoint.")
+        #         response_payload = {}
+        #
+        #     q_message_id = response_payload.get("message_id")
+        #
+        #     if response_payload.get("respond") is False:
+        #         print("[Webhook] respond=False, skipping reply.")
+        #
+        #         response_text = str(response_payload.get("response", ""))
+        #
+        #         # Do not mark delivered when response payload is unsafe.
+        #         if is_code_or_dict(response_text):
+        #             print("[Webhook] Unsafe response content detected; skipping delivered callback.")
+        #             return "EVENT_RECEIVED", 200
+        #
+        #         if q_message_id:
+        #             if phone_number_id:
+        #                 print("[Webhook] respond=False, triggering typing indicator using q message_id")
+        #                 send_typing_indicator(q_message_id, phone_number_id)
+        #             else:
+        #                 print("[Webhook] phone_number_id missing; typing indicator not sent.")
+        #
+        #             callback_success = send_delivery_callback(
+        #                 session_id=session_id,
+        #                 message_id=q_message_id,
+        #                 status="delivered",
+        #                 endpoint="https://q.prestoghana.com/delivery-update"
+        #             )
+        #             print(f"[Webhook] respond=False delivery callback result: {callback_success}")
+        #         else:
+        #             print("[Webhook] respond=False but no message_id from q; callback skipped.")
+        #
+        #         return "EVENT_RECEIVED", 200
+        #
+        #     if response_payload.get("template", None) is not None:
+        #         template = response_payload.get("template")
+        #         print("[Webhook] Sending WhatsApp template message:", template)
+        #         send_whatsapp_template_message(sender_wa_id, template, session_id=session_id, appId=appId, endpoint=endpoint, phone_number_id=phone_number_id)
+        #
+        #     elif response_payload.get("image", None) is not None:
+        #         image = response_payload.get("image")
+        #         print("[Webhook] Sending WhatsApp image message:", image)
+        #         send_whatsapp_image_message(sender_wa_id, image, image, phone_number_id=phone_number_id, session_id=session_id, appId=appId, endpoint=endpoint)
+        #
+        #     elif response_payload.get("document", None) is not None:
+        #         document = response_payload.get("document")
+        #         print("[Webhook] Sending WhatsApp document message:", document)
+        #         send_whatsapp_document_message(sender_wa_id, document, document, phone_number_id=phone_number_id, session_id=session_id, appId=appId, endpoint=endpoint)
+        #
+        #     else:
+        #         if isinstance(response_payload, dict):
+        #             reply_text = str(response_payload.get("response", "")).strip()
+        #         else:
+        #             reply_text = str(response_payload).strip()
+        #
+        #         if not reply_text:
+        #             reply_text = api_response.get("message", "Oops, Q is unavailable now, please try again later.")
+        #
+        #         lowered_reply = str(reply_text).lower().strip()
+        #         if lowered_reply in ["typing", "typing...", "...typing", "is typing", "I am processing this request"]:
+        #             typing_indicator_message_id = response_payload.get("message_id") or wa_message_id
+        #             if typing_indicator_message_id:
+        #                 print("[Webhook] Typing text detected - triggering typing indicator")
+        #                 print("=====typing_response====")
+        #                 send_typing_indicator(typing_indicator_message_id, phone_number_id)
+        #             return "EVENT_RECEIVED", 200
+        #
+        #         print("[Webhook] Sending WhatsApp text message:", reply_text)
+        #         send_whatsapp_message(sender_wa_id, reply_text, phone_number_id=phone_number_id, session_id=session_id, appId=appId, endpoint=endpoint)
+        #
+        # else:
+        #     pass
 
-                response_text = str(response_payload.get("response", ""))
-
-                # Do not mark delivered when response payload is unsafe.
-                if is_code_or_dict(response_text):
-                    print("[Webhook] Unsafe response content detected; skipping delivered callback.")
-                    return "EVENT_RECEIVED", 200
-
-                if q_message_id:
-                    if phone_number_id:
-                        print("[Webhook] respond=False, triggering typing indicator using q message_id")
-                        send_typing_indicator(q_message_id, phone_number_id)
-                    else:
-                        print("[Webhook] phone_number_id missing; typing indicator not sent.")
-
-                    callback_success = send_delivery_callback(
-                        session_id=session_id,
-                        message_id=q_message_id,
-                        status="delivered",
-                        endpoint="https://q.prestoghana.com/delivery-update"
-                    )
-                    print(f"[Webhook] respond=False delivery callback result: {callback_success}")
-                else:
-                    print("[Webhook] respond=False but no message_id from q; callback skipped.")
-
-                return "EVENT_RECEIVED", 200
-
-            if response_payload.get("template", None) is not None:
-                template = response_payload.get("template")
-                print("[Webhook] Sending WhatsApp template message:", template)
-                send_whatsapp_template_message(sender_wa_id, template, session_id=session_id, appId=appId, endpoint=endpoint, phone_number_id=phone_number_id)
-            
-            elif response_payload.get("image", None) is not None:
-                image = response_payload.get("image")
-                print("[Webhook] Sending WhatsApp image message:", image)
-                send_whatsapp_image_message(sender_wa_id, image, image, phone_number_id=phone_number_id, session_id=session_id, appId=appId, endpoint=endpoint)
-            
-            elif response_payload.get("document", None) is not None:
-                document = response_payload.get("document")
-                print("[Webhook] Sending WhatsApp document message:", document)
-                send_whatsapp_document_message(sender_wa_id, document, document, phone_number_id=phone_number_id, session_id=session_id, appId=appId, endpoint=endpoint)
-            
-            else:
-                if isinstance(response_payload, dict):
-                    reply_text = str(response_payload.get("response", "")).strip()
-                else:
-                    reply_text = str(response_payload).strip()
-
-                if not reply_text:
-                    reply_text = api_response.get("message", "Oops, Q is unavailable now, please try again later.")
-
-                lowered_reply = str(reply_text).lower().strip()
-                if lowered_reply in ["typing", "typing...", "...typing", "is typing", "I am processing this request"]:
-                    typing_indicator_message_id = response_payload.get("message_id") or wa_message_id
-                    if typing_indicator_message_id:
-                        print("[Webhook] Typing text detected - triggering typing indicator")
-                        print("=====typing_response====")
-                        send_typing_indicator(typing_indicator_message_id, phone_number_id)
-                    return "EVENT_RECEIVED", 200
-
-                print("[Webhook] Sending WhatsApp text message:", reply_text)
-                send_whatsapp_message(sender_wa_id, reply_text, phone_number_id=phone_number_id, session_id=session_id, appId=appId, endpoint=endpoint)
-
-        else:
-            pass
+        return "EVENT_RECEIVED", 200
         
         # Send reply back to user
     
