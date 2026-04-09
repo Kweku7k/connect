@@ -2396,7 +2396,9 @@ def log_message_to_db(session_id, message_id, phone_number, message_type, messag
 def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID, session_id=None, appId=None, endpoint=None, delivery_message_id=None):
     url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
     
-    
+    print(session_id)
+    print(appId)
+    print(delivery_message_id)    
 
     headers = {
         "Authorization": f"Bearer {WHATSAPP_TOKEN}",
