@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import os
 import pprint
+import re
 import smtplib
 import threading
 import time
@@ -2341,6 +2342,30 @@ def is_code_or_dict(text):
     
     return False
 
+
+def is_typing_signal(text):
+    """
+    Detect whether a response text is a typing marker that should trigger
+    WhatsApp typing indicator instead of sending plain text.
+    """
+    if text is None:
+        return False
+
+    lowered = str(text).strip().lower()
+    if not lowered:
+        return False
+
+    # Remove spaces and punctuation-like dots/ellipsis for robust matching.
+    collapsed = re.sub(r"[\s\.…]+", "", lowered)
+    return collapsed in {
+        "typing",
+        "istyping",
+        "processing",
+        "processingrequest",
+        "iamprocessingthisrequest",
+        "improcessingthisrequest",
+    }
+
 def log_message_to_db(session_id, message_id, phone_number, message_type, message_content, phone_number_id, appId, endpoint):
     """
     Log a sent message to MessageLog table
@@ -2385,6 +2410,11 @@ def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID, session_id=
     
     # Convert to string if not already
     text = str(text) if text is not None else ""
+
+    # Never send typing marker text to users.
+    if is_typing_signal(text):
+        print("[send_whatsapp_message] Blocked typing marker text")
+        return {"blocked": True, "reason": "typing_signal"}
 
     # Safety gate: do not send structured tool/code payloads to users.
     if is_code_or_dict(text):
@@ -2857,13 +2887,14 @@ def process_incoming_message_after_delay(
                 if not reply_text:
                     reply_text = api_response.get("message", "Oops, Q is unavailable now, please try again later.")
 
-                lowered_reply = str(reply_text).lower().strip()
-                if lowered_reply in ["typing", "typing...", "...typing", "is typing", "i am processing this request"]:
+                if is_typing_signal(reply_text):
                     typing_indicator_message_id = response_payload.get("message_id") or wa_message_id
                     if typing_indicator_message_id:
                         print("[Webhook] Typing text detected - triggering typing indicator")
                         print("=====typing_response====")
                         send_typing_indicator(typing_indicator_message_id, phone_number_id)
+                    else:
+                        print("[Webhook] Typing signal detected but message_id missing; indicator not sent.")
                     return
 
                 print("[Webhook] Sending WhatsApp text message:", reply_text)
