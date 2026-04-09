@@ -2340,6 +2340,8 @@ def is_code_or_dict(text):
     #         print("[is_code_or_dict] Detected potential multi-line code block")
     #         return True
     
+    
+    
     return False
 
 
@@ -2391,7 +2393,7 @@ def log_message_to_db(session_id, message_id, phone_number, message_type, messag
         db.session.rollback()
         return False
 
-def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID, session_id=None, appId=None, endpoint=None):
+def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID, session_id=None, appId=None, endpoint=None, delivery_message_id=None):
     url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
 
     headers = {
@@ -2414,11 +2416,25 @@ def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID, session_id=
     # Never send typing marker text to users.
     if is_typing_signal(text):
         print("[send_whatsapp_message] Blocked typing marker text")
+        if session_id and delivery_message_id:
+            send_delivery_callback(
+                session_id=session_id,
+                message_id=delivery_message_id,
+                status="failed",
+                endpoint="https://q.prestoghana.com/delivery-update"
+            )
         return {"blocked": True, "reason": "typing_signal"}
 
     # Safety gate: do not send structured tool/code payloads to users.
     if is_code_or_dict(text):
         print("[send_whatsapp_message] Blocked unsafe content")
+        if session_id and delivery_message_id:
+            send_delivery_callback(
+                session_id=session_id,
+                message_id=delivery_message_id,
+                status="failed",
+                endpoint="https://q.prestoghana.com/delivery-update"
+            )
         return {"blocked": True, "reason": "unsafe_content"}
 
     payload = {
@@ -2905,6 +2921,7 @@ def process_incoming_message_after_delay(
                     session_id=session_id,
                     appId=appId,
                     endpoint=endpoint,
+                    delivery_message_id=q_message_id,
                 )
 
         except Exception as e:
@@ -3156,7 +3173,8 @@ def verify_token():
                     db.session.commit()
                     
                     # Send delivery callback to the endpoint
-                    if status.lower() in ["delivered", "read"]:
+                    # if status.lower() in ["delivered", "read", "failed", "rejected"]:
+                    if status.lower() in ["delivered", "read"]: #TODO: TRY THE OTHER IMPLEMENTATION
                         print(f"[Webhook] Sending delivery callback for message_id={message_id}")
                         callback_success = send_delivery_callback(
                             session_id=msg_log.session_id,
