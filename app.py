@@ -2395,6 +2395,8 @@ def log_message_to_db(session_id, message_id, phone_number, message_type, messag
 
 def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID, session_id=None, appId=None, endpoint=None, delivery_message_id=None):
     url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
+    
+    
 
     headers = {
         "Authorization": f"Bearer {WHATSAPP_TOKEN}",
@@ -2416,19 +2418,21 @@ def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID, session_id=
     # Never send typing marker text to users.
     if is_typing_signal(text):
         print("[send_whatsapp_message] Blocked typing marker text")
-        if session_id and delivery_message_id:
-            send_delivery_callback(
-                session_id=session_id,
-                message_id=delivery_message_id,
-                status="failed",
-                endpoint="https://q.prestoghana.com/delivery-update"
-            )
         return {"blocked": True, "reason": "typing_signal"}
 
     # Safety gate: do not send structured tool/code payloads to users.
     if is_code_or_dict(text):
         print("[send_whatsapp_message] Blocked unsafe content")
         if session_id and delivery_message_id:
+            print(
+                "[send_whatsapp_message] failed callback args:",
+                {
+                    "session_id": session_id,
+                    "delivery_message_id": delivery_message_id,
+                    "status": "failed",
+                    "endpoint": "https://q.prestoghana.com/delivery-update",
+                },
+            )
             send_delivery_callback(
                 session_id=session_id,
                 message_id=delivery_message_id,
