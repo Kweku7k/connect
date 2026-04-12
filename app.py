@@ -78,8 +78,6 @@ WABA_ID = os.environ.get("WABA_ID")
 # Endpoint configuration for sending message and session
 API_ENDPOINT = os.environ.get("API_ENDPOINT")
 BUSINESS_API_ENDPOINT = os.environ.get("BUSINESS_API_ENDPOINT")
-POLL_TASK_ENDPOINT = os.environ.get("POLL_TASK_ENDPOINT", "https://q.prestoghana.com/poll-task")
-POLL_INACTIVITY_DELAY_SECONDS = int(os.environ.get("POLL_INACTIVITY_DELAY_SECONDS", "5"))
 
 # Presto App Key for API authentication
 PRESTO_APP_KEY = os.environ.get("PRESTO_APP_KEY")
@@ -2138,55 +2136,6 @@ def update_session_timestamp(phone_number):
         db.session.commit()
 
 
-def should_skip_due_to_new_activity(session_id, activity_marker):
-    """
-    Return True when there is newer inbound activity for this session after
-    the marker timestamp (used to enforce inactivity window before polling).
-    """
-    if not activity_marker:
-        return False
-
-    session = Session.query.filter_by(session_id=session_id).first()
-    if not session or not session.updated_at:
-        return False
-
-    return session.updated_at > activity_marker
-
-
-def poll_task_status(session_id, appId):
-    """
-    Poll Q task status endpoint and return JSON response when available.
-    """
-    payload = {
-        "session_id": session_id
-    }
-
-    headers = {
-        "Content-Type": "application/json",
-        "x-api-key": appId
-    }
-
-    try:
-        print(f"[poll_task_status] Polling task status: endpoint={POLL_TASK_ENDPOINT}, session_id={session_id}")
-        response = requests.post(POLL_TASK_ENDPOINT, json=payload, headers=headers, timeout=15)
-        print(f"[poll_task_status] Status code: {response.status_code}")
-        print(f"[poll_task_status] Raw response: {response.text}")
-        response.raise_for_status()
-
-        try:
-            return response.json()
-        except ValueError:
-            return {
-                "done": False,
-                "message": response.text
-            }
-    except requests.exceptions.RequestException as e:
-        print(f"[poll_task_status] RequestException occurred: {e}")
-        return None
-    except Exception as e:
-        print(f"[poll_task_status] General Exception occurred: {e}")
-        return None
-
 # Function to send message and session to endpoint
 def send_message_to_endpoint(message, session_id, body, appId, endpoint=None):
     print("=== send_message_to_endpoint called ===")
@@ -2854,7 +2803,6 @@ def whatsapp_verify():
 
 def process_incoming_message_after_delay(
     delay_seconds,
-    activity_marker,
     message_text,
     session_id,
     body,
@@ -2870,12 +2818,6 @@ def process_incoming_message_after_delay(
     with app.app_context():
         try:
             time.sleep(delay_seconds)
-
-            if should_skip_due_to_new_activity(session_id, activity_marker):
-                print(
-                    f"[Webhook] Skipping delayed processing for session_id={session_id}; newer activity detected."
-                )
-                return
 
             api_response = send_message_to_endpoint(message_text, session_id, body, appId, endpoint)
             print('[api_response]:')
@@ -2918,21 +2860,6 @@ def process_incoming_message_after_delay(
                     print(f"[Webhook] respond=False delivery callback result: {callback_success}")
                 else:
                     print("[Webhook] respond=False but no message_id from q; callback skipped.")
-
-                poll_response = poll_task_status(session_id, appId)
-                if isinstance(poll_response, dict):
-                    poll_message = str(poll_response.get("message", "")).strip()
-                    if poll_message and not is_typing_signal(poll_message) and not is_code_or_dict(poll_message):
-                        print("[Webhook] Sending poll-task message to WhatsApp:", poll_message)
-                        send_whatsapp_message(
-                            sender_wa_id,
-                            poll_message,
-                            phone_number_id=phone_number_id,
-                            session_id=session_id,
-                            appId=appId,
-                            endpoint=endpoint,
-                            delivery_message_id=q_message_id,
-                        )
 
                 return
 
@@ -2991,21 +2918,6 @@ def process_incoming_message_after_delay(
                         send_typing_indicator(typing_indicator_message_id, phone_number_id)
                     else:
                         print("[Webhook] Typing signal detected but message_id missing; indicator not sent.")
-
-                    poll_response = poll_task_status(session_id, appId)
-                    if isinstance(poll_response, dict):
-                        poll_message = str(poll_response.get("message", "")).strip()
-                        if poll_message and not is_typing_signal(poll_message) and not is_code_or_dict(poll_message):
-                            print("[Webhook] Sending poll-task message to WhatsApp:", poll_message)
-                            send_whatsapp_message(
-                                sender_wa_id,
-                                poll_message,
-                                phone_number_id=phone_number_id,
-                                session_id=session_id,
-                                appId=appId,
-                                endpoint=endpoint,
-                                delivery_message_id=q_message_id,
-                            )
                     return
 
                 print("[Webhook] Sending WhatsApp text message:", reply_text)
@@ -3129,14 +3041,12 @@ def verify_token():
         # Get or create session for this phone number
         session_id = get_or_create_session(sender_wa_id, appId, token)
         update_session_timestamp(sender_wa_id)
-        activity_marker = datetime.now()
 
-        # Non-blocking: wait for inactivity window, then process q polling/reply flow in a daemon thread.
+        # Non-blocking: wait 6 seconds, then process q polling/reply flow in a daemon thread.
         worker = threading.Thread(
             target=process_incoming_message_after_delay,
             kwargs={
-                "delay_seconds": POLL_INACTIVITY_DELAY_SECONDS,
-                "activity_marker": activity_marker,
+                "delay_seconds": 6,
                 "message_text": message_text,
                 "session_id": session_id,
                 "body": body,
