@@ -2297,6 +2297,16 @@ def is_code_or_dict(text):
         print("[is_code_or_dict] Detected function call payload")
         return True
     
+    # NEW: Check for embedded JSON fragments like [{ or }] anywhere in text
+    if re.search(r'\[\s*\{|\}\s*\]', text_stripped):
+        print("[is_code_or_dict] Detected embedded JSON fragment (e.g., [{...}])")
+        return True
+    
+    # NEW: Check for patterns like {"id":"call_ which indicate leaked function structures
+    if re.search(r'\{\s*"(id|type|function|arguments)"\s*:', text_stripped):
+        print("[is_code_or_dict] Detected potential function call structure")
+        return True
+    
     # Check for JSON/dictionaries
     if ((text_stripped.startswith('{') and text_stripped.endswith('}')) or 
         (text_stripped.startswith('[') and text_stripped.endswith(']'))):
