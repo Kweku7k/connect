@@ -211,6 +211,8 @@ class User(db.Model):
     balance = db.Column(db.Float, default=0)
     credits = db.Column(db.Integer, default=0)
     added = db.Column(db.DateTime, default=datetime.now)
+    wa_active = db.Column(db.Boolean, default=True)
+    wa_default_message = db.Column(db.String)
 
     def __repr__(self):
         return f"User('id: {self.id}', 'slug:{self.slug}')"
@@ -2770,6 +2772,26 @@ def send_message():
     
     # return {"response": "Message sent successfully"}
 
+@app.route("/wa/toggle", methods=["POST"])
+@presto_app_key_required
+def toggle_wa_active():
+    """Toggle WhatsApp active flag and optionally set a default message for when it is off."""
+    current_user = get_current_user()
+    data = request.get_json() or {}
+
+    if "wa_active" in data:
+        current_user.wa_active = bool(data["wa_active"])
+
+    if "wa_default_message" in data:
+        current_user.wa_default_message = data["wa_default_message"]
+
+    db.session.commit()
+
+    return {
+        "wa_active": current_user.wa_active,
+        "wa_default_message": current_user.wa_default_message,
+    }, 200
+
 @app.route("/wa/send/otp", methods=["POST"])
 @presto_app_key_required
 def send_whatsapp_otp():
@@ -3044,7 +3066,19 @@ def verify_token():
     token = user.appId
     endpoint = user.endpoint
     print(f"appId: {appId}")
-    
+
+    # If this WhatsApp number is turned off, send the default message and stop.
+    if not user.wa_active:
+        if user.wa_default_message and sender_wa_id:
+            send_whatsapp_message(
+                sender_wa_id,
+                user.wa_default_message,
+                phone_number_id=phone_number_id,
+                appId=appId,
+            )
+        print(f"[Webhook] wa_active=False for appId={appId}; skipping endpoint forwarding.")
+        return "EVENT_RECEIVED", 200
+
     # UPDATE
     
     if sender_wa_id and message_text:
