@@ -9,3 +9,5 @@ psycopg2-binary
 flask_cors
 python-dotenv
 bs4
+celery
+redis

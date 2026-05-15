@@ -7,13 +7,18 @@ import hmac
 import os
 import pprint
 import re
+import secrets
 import smtplib
+import string
 import threading
 import time
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+from celery import Celery
 from flask import Flask, Response, abort, flash, jsonify,redirect,url_for,render_template,request, session
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from dotenv import load_dotenv
 import requests
 from sqlalchemy.dialects.postgresql import JSONB, JSON
 from flask_bcrypt import Bcrypt
@@ -32,10 +37,29 @@ import firebase_admin
 from firebase_admin import credentials, storage
 
 
+load_dotenv()
+
+def normalize_celery_redis_url(url):
+    if not url or not url.startswith('rediss://'):
+        return url
+
+    parsed_url = urlsplit(url)
+    query_params = dict(parse_qsl(parsed_url.query, keep_blank_values=True))
+    query_params.setdefault('ssl_cert_reqs', 'CERT_NONE')
+    return urlunsplit((
+        parsed_url.scheme,
+        parsed_url.netloc,
+        parsed_url.path,
+        urlencode(query_params),
+        parsed_url.fragment
+    ))
+
 app=Flask(__name__)
 app.config['SECRET_KEY'] = 'c288b2157916b13s523242q3wede00ba242sdqwc676dfde'
 app.config['JWT_SECRET_KEY'] = 'c288b2157916b13s523242q3wede00ba242sdqwc676dfde'
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
+app.config['CELERY_BROKER_URL'] = normalize_celery_redis_url(os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0'))
+app.config['CELERY_RESULT_BACKEND'] = normalize_celery_redis_url(os.environ.get('CELERY_RESULT_BACKEND', app.config['CELERY_BROKER_URL']))
 
 # app.config['SQLALCHEMY_DATABASE_URI']= 'postgresql://postgres:adumatta@localhost:5432/connect'
 # app.config['SQLALCHEMY_DATABASE_URI']= 'postgresql://postgres:adumatta@database-1.crebgu8kjb7o.eu-north-1.rds.amazonaws.com:5432/connect'
@@ -46,6 +70,13 @@ migrate = Migrate(app, db)
 bcrypt = Bcrypt(app)
 
 cors = CORS(app)
+
+celery = Celery(
+    app.import_name,
+    broker=app.config['CELERY_BROKER_URL'],
+    backend=app.config['CELERY_RESULT_BACKEND']
+)
+celery.conf.update(app.config)
 
 algorithms = ["HS256"]
 
@@ -159,6 +190,28 @@ def presto_app_key_required(f):
     
     return decorated
 
+def user_api_key_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        api_key = request.headers.get('x-presto-api-key')
+        auth_header = request.headers.get('Authorization', '')
+
+        if not api_key and auth_header.startswith('Bearer '):
+            api_key = auth_header.replace('Bearer ', '', 1).strip()
+
+        if not api_key:
+            return jsonify({'error': 'Missing x-presto-api-key header'}), 401
+
+        api_user = User.query.filter_by(api_key=api_key).first()
+        if api_user is None:
+            return jsonify({'error': 'Invalid x-presto-api-key'}), 403
+
+        return f(api_user, *args, **kwargs)
+
+    return decorated
+
+def generate_user_api_key():
+    return secrets.token_urlsafe(32)
 
 
 # ------ MODELS
@@ -213,6 +266,7 @@ class User(db.Model):
     added = db.Column(db.DateTime, default=datetime.now)
     wa_active = db.Column(db.Boolean, default=True)
     wa_default_message = db.Column(db.String)
+    api_key = db.Column(db.String(255), unique=True, index=True)
 
     def __repr__(self):
         return f"User('id: {self.id}', 'slug:{self.slug}')"
@@ -386,6 +440,32 @@ class EmailTemplateEntry(db.Model):
 
     def __repr__(self):
         return f"EmailTemplateEntry('{self.name}', ' - {self.subject}')"
+
+
+class SMSBroadcastJob(db.Model):
+    __tablename__ = 'sms_broadcast_job'
+
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.String(36), nullable=False, unique=True, index=True)
+    celery_task_id = db.Column(db.String(255))
+    user_id = db.Column(db.Integer, nullable=False)
+    appId = db.Column(db.String)
+    senderId = db.Column(db.String)
+    status = db.Column(db.String, default="queued")
+    total_recipients = db.Column(db.Integer, default=0)
+    total_groups = db.Column(db.Integer, default=0)
+    processed_groups = db.Column(db.Integer, default=0)
+    sent_recipients = db.Column(db.Integer, default=0)
+    failed_groups = db.Column(db.Integer, default=0)
+    normalized_recipients = db.Column(JSON, nullable=True)
+    provider_responses = db.Column(JSON, nullable=True)
+    errors = db.Column(JSON, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.now)
+    updated_at = db.Column(db.DateTime, default=datetime.now, onupdate=datetime.now)
+    completed_at = db.Column(db.DateTime)
+
+    def __repr__(self):
+        return f"<SMSBroadcastJob {self.job_id}: {self.status}>"
 
 
 class Session(db.Model):
@@ -1787,6 +1867,356 @@ def broadcast_api():
 
     return response
 
+def normalize_broadcast_phone(phone):
+    clean_phone = str(phone).replace(" ", "")
+    if len(clean_phone) < 9:
+        return None
+    return "0" + clean_phone[-9:]
+
+def get_message_placeholders(message):
+    placeholders = []
+    formatter = string.Formatter()
+    for _, field_name, _, _ in formatter.parse(message):
+        if field_name:
+            placeholders.append(field_name)
+    return placeholders
+
+def validate_broadcast_v2_body(body):
+    errors = []
+
+    if not isinstance(body, dict):
+        return None, [{"field": "body", "message": "JSON body is required."}]
+
+    message = body.get("message")
+    sender_id = body.get("senderId", "PRSConnect")
+    recipients = body.get("recipients")
+
+    if not isinstance(message, str) or not message.strip():
+        errors.append({"field": "message", "message": "message is required."})
+
+    if not isinstance(sender_id, str) or not sender_id.strip():
+        errors.append({"field": "senderId", "message": "senderId must be a non-empty string."})
+
+    if not isinstance(recipients, list) or len(recipients) == 0:
+        errors.append({"field": "recipients", "message": "recipients must be a non-empty array."})
+
+    if errors:
+        return None, errors
+
+    try:
+        get_message_placeholders(message)
+    except ValueError as e:
+        return None, [{"field": "message", "message": f"Invalid message template: {str(e)}"}]
+
+    deduped_recipients = []
+    seen_contacts = set()
+
+    for index, recipient in enumerate(recipients):
+        field_prefix = f"recipients[{index}]"
+
+        if not isinstance(recipient, dict):
+            errors.append({"field": field_prefix, "message": "recipient must be an object."})
+            continue
+
+        phone = recipient.get("phone")
+        if phone is None or str(phone).strip() == "":
+            errors.append({"field": f"{field_prefix}.phone", "message": "phone is required."})
+            continue
+
+        normalized_phone = normalize_broadcast_phone(phone)
+        if normalized_phone is None:
+            errors.append({"field": f"{field_prefix}.phone", "message": "phone must contain at least 9 characters after spaces are removed."})
+            continue
+
+        variables = recipient.get("variables", {})
+        if variables is None:
+            variables = {}
+
+        if not isinstance(variables, dict):
+            errors.append({"field": f"{field_prefix}.variables", "message": "variables must be an object."})
+            continue
+
+        if normalized_phone in seen_contacts:
+            continue
+
+        seen_contacts.add(normalized_phone)
+        deduped_recipients.append({
+            "field_prefix": field_prefix,
+            "phone": str(phone),
+            "normalized_phone": normalized_phone,
+            "variables": variables
+        })
+
+    if errors:
+        return None, errors
+
+    rendered_recipients = []
+    for recipient in deduped_recipients:
+        try:
+            rendered_message = message.format(**recipient["variables"])
+        except KeyError as e:
+            errors.append({
+                "field": f"{recipient['field_prefix']}.variables",
+                "message": f"Missing variable: {str(e).strip(chr(39))}"
+            })
+            continue
+        except (IndexError, AttributeError) as e:
+            errors.append({
+                "field": f"{recipient['field_prefix']}.variables",
+                "message": f"Invalid or missing variable: {str(e)}"
+            })
+            continue
+        except ValueError as e:
+            errors.append({
+                "field": "message",
+                "message": f"Invalid message template: {str(e)}"
+            })
+            continue
+
+        rendered_recipients.append({
+            "phone": recipient["phone"],
+            "normalized_phone": recipient["normalized_phone"],
+            "message": rendered_message
+        })
+
+    if errors:
+        return None, errors
+
+    return {
+        "message": message,
+        "senderId": sender_id,
+        "recipients": rendered_recipients
+    }, []
+
+def build_broadcast_v2_groups(validated_body):
+    rendered_groups = {}
+    timestamp = datetime.now().strftime('%c')
+
+    for recipient in validated_body["recipients"]:
+        final_message = recipient["message"] + f"\n{timestamp}" + "\nPowered By PrestoConnect"
+        rendered_groups.setdefault(final_message, []).append(recipient["normalized_phone"])
+
+    return rendered_groups
+
+def serialize_sms_broadcast_job(job):
+    return {
+        "job_id": job.job_id,
+        "celery_task_id": job.celery_task_id,
+        "status": job.status,
+        "appId": job.appId,
+        "user_id": job.user_id,
+        "senderId": job.senderId,
+        "total_recipients": job.total_recipients,
+        "total_groups": job.total_groups,
+        "processed_groups": job.processed_groups,
+        "sent_recipients": job.sent_recipients,
+        "failed_groups": job.failed_groups,
+        "normalized_recipients": job.normalized_recipients or [],
+        "provider_responses": job.provider_responses or [],
+        "errors": job.errors or [],
+        "created_at": job.created_at.isoformat() if job.created_at else None,
+        "updated_at": job.updated_at.isoformat() if job.updated_at else None,
+        "completed_at": job.completed_at.isoformat() if job.completed_at else None
+    }
+
+def process_broadcast_v2_job(job_id, sender_id, rendered_groups):
+    with app.app_context():
+        print(f"[broadcast_v2_job] Starting job_id={job_id}, sender_id={sender_id}, total_groups={len(rendered_groups)}")
+        job = SMSBroadcastJob.query.filter_by(job_id=job_id).first()
+        if job is None:
+            print(f"[broadcast_v2_job] Job not found: {job_id}")
+            return
+
+        job.status = "processing"
+        job.updated_at = datetime.now()
+        db.session.commit()
+
+        provider_responses = []
+        failed_groups = 0
+        sent_recipients = 0
+
+        try:
+            for message, contacts in rendered_groups.items():
+                group_number = len(provider_responses) + 1
+                print(
+                    f"[broadcast_v2_job] Sending group {group_number}/{len(rendered_groups)} "
+                    f"for job_id={job_id}, recipients={len(contacts)}"
+                )
+                try:
+                    response = sendMnotifySms(sender_id, contacts, message)
+                    print(
+                        f"[broadcast_v2_job] Sent group {group_number}/{len(rendered_groups)} "
+                        f"for job_id={job_id}"
+                    )
+                    provider_responses.append({
+                        "status": "sent",
+                        "message": message,
+                        "contacts": contacts,
+                        "total_recipients": len(contacts),
+                        "provider_response": response
+                    })
+                    sent_recipients += len(contacts)
+                except Exception as e:
+                    print(
+                        f"[broadcast_v2_job] Failed group {group_number}/{len(rendered_groups)} "
+                        f"for job_id={job_id}: {str(e)}"
+                    )
+                    failed_groups += 1
+                    provider_responses.append({
+                        "status": "failed",
+                        "message": message,
+                        "contacts": contacts,
+                        "total_recipients": len(contacts),
+                        "error": str(e)
+                    })
+
+                job.processed_groups = len(provider_responses)
+                job.sent_recipients = sent_recipients
+                job.failed_groups = failed_groups
+                job.provider_responses = list(provider_responses)
+                job.updated_at = datetime.now()
+                db.session.commit()
+
+            if failed_groups == len(provider_responses):
+                job.status = "failed"
+            elif failed_groups > 0:
+                job.status = "partial"
+            else:
+                job.status = "success"
+
+            job.completed_at = datetime.now()
+            job.updated_at = datetime.now()
+            db.session.commit()
+            print(
+                f"[broadcast_v2_job] Completed job_id={job_id}, status={job.status}, "
+                f"sent_recipients={sent_recipients}, failed_groups={failed_groups}"
+            )
+
+        except Exception as e:
+            print(f"[broadcast_v2_job] Fatal error for job_id={job_id}: {str(e)}")
+            job.status = "failed"
+            job.errors = [{"message": str(e)}]
+            job.completed_at = datetime.now()
+            job.updated_at = datetime.now()
+            db.session.commit()
+
+@celery.task(name="app.process_broadcast_v2_job_task")
+def process_broadcast_v2_job_task(job_id, sender_id, rendered_groups):
+    print(f"[broadcast_v2_celery] Received task for job_id={job_id}")
+    process_broadcast_v2_job(job_id, sender_id, rendered_groups)
+
+@app.route('/api/v2/broadcast', methods=['POST'])
+@user_api_key_required
+def broadcast_api_v2(api_user):
+    print(f"[broadcast_v2] Request received for user_id={api_user.id}, appId={api_user.appId}")
+    body = request.get_json(silent=True)
+    validated_body, errors = validate_broadcast_v2_body(body)
+
+    if errors:
+        print(f"[broadcast_v2] Validation failed for user_id={api_user.id}: {errors}")
+        return jsonify({
+            "status": "error",
+            "errors": errors
+        }), 400
+
+    sender_id = validated_body["senderId"]
+    print(f"[broadcast_v2] Payload validated for user_id={api_user.id}, sender_id={sender_id}")
+    sender_id_is_allowed = SenderId.query.filter_by(
+        appId=api_user.appId,
+        senderId=sender_id,
+        approved=True
+    ).first()
+
+    if sender_id_is_allowed is None:
+        print(
+            f"[broadcast_v2] Sender ID rejected for user_id={api_user.id}, "
+            f"appId={api_user.appId}, sender_id={sender_id}"
+        )
+        return jsonify({
+            "status": "error",
+            "errors": [{
+                "field": "senderId",
+                "message": "senderId is not approved for this API key user."
+            }]
+        }), 403
+
+    rendered_groups = build_broadcast_v2_groups(validated_body)
+    normalized_recipients = [
+        recipient["normalized_phone"]
+        for recipient in validated_body["recipients"]
+    ]
+    print(
+        f"[broadcast_v2] Built groups for user_id={api_user.id}: "
+        f"total_recipients={len(normalized_recipients)}, total_groups={len(rendered_groups)}"
+    )
+
+    job_id = str(uuid.uuid4())
+    job = SMSBroadcastJob(
+        job_id=job_id,
+        user_id=api_user.id,
+        appId=api_user.appId,
+        senderId=sender_id,
+        status="queued",
+        total_recipients=len(normalized_recipients),
+        total_groups=len(rendered_groups),
+        processed_groups=0,
+        sent_recipients=0,
+        failed_groups=0,
+        normalized_recipients=normalized_recipients,
+        provider_responses=[],
+        errors=[]
+    )
+    db.session.add(job)
+    db.session.commit()
+    print(f"[broadcast_v2] Created job_id={job_id} for user_id={api_user.id}")
+
+    try:
+        task = process_broadcast_v2_job_task.delay(job_id, sender_id, rendered_groups)
+        job.celery_task_id = task.id
+        db.session.commit()
+        print(f"[broadcast_v2] Queued Celery task_id={task.id} for job_id={job_id}")
+    except Exception as e:
+        print(f"[broadcast_v2] Failed to queue Celery task for job_id={job_id}: {str(e)}")
+        job.status = "failed"
+        job.errors = [{"message": f"Could not queue Celery task: {str(e)}"}]
+        job.completed_at = datetime.now()
+        job.updated_at = datetime.now()
+        db.session.commit()
+        return jsonify({
+            "status": "error",
+            "job_id": job_id,
+            "error": "Could not queue broadcast job.",
+            "details": str(e)
+        }), 503
+
+    return jsonify({
+        "status": "queued",
+        "job_id": job_id,
+        "celery_task_id": job.celery_task_id,
+        "status_url": f"/api/v2/broadcast/{job_id}",
+        "appId": api_user.appId,
+        "user_id": api_user.id,
+        "senderId": sender_id,
+        "total_recipients": len(normalized_recipients),
+        "total_groups": len(rendered_groups),
+        "normalized_recipients": normalized_recipients
+    }), 202
+
+@app.route('/api/v2/broadcast/<string:job_id>', methods=['GET'])
+@user_api_key_required
+def get_broadcast_api_v2_job(api_user, job_id):
+    job = SMSBroadcastJob.query.filter_by(job_id=job_id, user_id=api_user.id).first()
+    if job is None:
+        return jsonify({
+            "status": "error",
+            "error": "Broadcast job not found."
+        }), 404
+
+    return jsonify({
+        "status": "ok",
+        "job": serialize_sms_broadcast_job(job)
+    })
+
 @app.route('/onboard', methods=['GET', 'POST'])
 def onboard():
     form = RegisterForm()
@@ -1799,7 +2229,7 @@ def onboard():
 
 
         hashed_password = bcrypt.generate_password_hash(form.password.data).decode('utf-8')
-        newuser = User(username=form.username.data, email=form.email.data, phone=form.phone.data, password=hashed_password, balance=100, total=100, credits=100, appId=form.appId.data)
+        newuser = User(username=form.username.data, email=form.email.data, phone=form.phone.data, password=hashed_password, balance=100, total=100, credits=100, appId=form.appId.data, api_key=generate_user_api_key())
         print(newuser)
         try:
             db.session.add(newuser)
@@ -3090,7 +3520,7 @@ def verify_token():
         worker = threading.Thread(
             target=process_incoming_message_after_delay,
             kwargs={
-                "delay_seconds": 6,
+                "delay_seconds": 1,
                 "message_text": message_text,
                 "session_id": session_id,
                 "body": body,
