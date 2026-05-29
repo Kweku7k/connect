@@ -2573,7 +2573,7 @@ def send_message_to_endpoint(message, session_id, body, appId, endpoint=None):
     print("=== send_message_to_endpoint called ===")
     print(f"Message: {message}")
     print(f"Session ID: {session_id}")
-    print(f"Body: {body}")
+    # print(f"Body: {body}")
 
     try:
         user_data = get_user_data_from_whatsapp_payload(body)
@@ -3161,6 +3161,19 @@ def normalize_phone_number(phone_number):
     phone_number = "233"+phone_number[-9:]
     return phone_number
 
+def get_whatsapp_phone_number_id_for_app(appId):
+    if not appId:
+        return None, None
+
+    user = User.query.filter_by(appId=appId).first()
+    if not user:
+        return None, {"error": "No user found for appId"}
+
+    if not user.waId:
+        return None, {"error": "No WhatsApp phone number ID configured for appId"}
+
+    return user.waId, None
+
 @app.route("/wa/send", methods=["POST"])
 @presto_app_key_required
 def send_message():
@@ -3174,11 +3187,17 @@ def send_message():
     print(text)
     
     phone_number_id = data.get("phone_number_id",PHONE_NUMBER_ID)
+    appId = data.get("appId")
+    app_phone_number_id, app_phone_number_error = get_whatsapp_phone_number_id_for_app(appId)
+    if app_phone_number_error:
+        return jsonify(app_phone_number_error), 404
+    if app_phone_number_id:
+        phone_number_id = app_phone_number_id
     print(phone_number_id)
     
     if data.get("template", None) is not None:
         template = data["template"]
-        send_whatsapp_template_message(to, template)
+        return send_whatsapp_template_message(to, template, appId=appId, phone_number_id=phone_number_id)
         
     elif data.get("image"):
         image = data.get("image")
@@ -3414,7 +3433,7 @@ def verify_token():
 
     # Handle POST request for incoming messages
     body = request.get_json() or {}
-    print("Incoming WhatsApp payload:", body)
+    # print("Incoming WhatsApp payload:", body)
 
     sender_wa_id = None
     message_text = None
