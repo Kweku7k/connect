@@ -266,7 +266,7 @@ class User(db.Model):
     added = db.Column(db.DateTime, default=datetime.now)
     wa_active = db.Column(db.Boolean, default=True)
     wa_default_message = db.Column(db.String)
-    ai_mode = db.Column(db.Boolean, default=False)
+    ai_mode = db.Column(db.Boolean, default=True)
     api_key = db.Column(db.String(255), unique=True, index=True)
 
     def __repr__(self):
