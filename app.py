@@ -266,6 +266,7 @@ class User(db.Model):
     added = db.Column(db.DateTime, default=datetime.now)
     wa_active = db.Column(db.Boolean, default=True)
     wa_default_message = db.Column(db.String)
+    ai_mode = db.Column(db.Boolean, default=False)
     api_key = db.Column(db.String(255), unique=True, index=True)
 
     def __repr__(self):
@@ -2811,6 +2812,34 @@ def is_typing_signal(text):
         "improcessingthisrequest",
     }
 
+def notify_whatsapp_error(operation, to=None, phone_number_id=None, session_id=None, appId=None, endpoint=None, status_code=None, response_data=None, exception=None):
+    details = [
+        "WhatsApp flow error",
+        f"operation: {operation}",
+        f"recipient: {to}",
+        f"phone_number_id: {phone_number_id}",
+        f"session_id: {session_id}",
+        f"appId: {appId}",
+        f"endpoint: {endpoint}",
+    ]
+
+    if status_code is not None:
+        details.append(f"status_code: {status_code}")
+
+    if response_data is not None:
+        response_preview = str(response_data)
+        if len(response_preview) > 1000:
+            response_preview = response_preview[:1000] + "..."
+        details.append(f"response: {response_preview}")
+
+    if exception is not None:
+        details.append(f"exception: {str(exception)}")
+
+    try:
+        sendTelegram("\n".join(details))
+    except Exception as telegram_error:
+        print(f"[notify_whatsapp_error] Failed to send Telegram alert: {telegram_error}")
+
 def log_message_to_db(session_id, message_id, phone_number, message_type, message_content, phone_number_id, appId, endpoint):
     """
     Log a sent message to MessageLog table
@@ -2900,6 +2929,18 @@ def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID, session_id=
         response = requests.post(url, headers=headers, json=payload)
         response_data = response.json()
         print(f"WhatsApp API response: {response_data}")
+
+        if response.status_code >= 400 or (isinstance(response_data, dict) and response_data.get("error")):
+            notify_whatsapp_error(
+                operation="send_whatsapp_message",
+                to=to,
+                phone_number_id=phone_number_id,
+                session_id=session_id,
+                appId=appId,
+                endpoint=endpoint,
+                status_code=response.status_code,
+                response_data=response_data,
+            )
         
         # Extract message_id from response
         message_id = response_data.get("messages", [{}])[0].get("id") if response_data.get("messages") else None
@@ -2914,6 +2955,15 @@ def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID, session_id=
         return response_data
     except Exception as e:
         print(f"[send_whatsapp_message] Error sending message: {e}")
+        notify_whatsapp_error(
+            operation="send_whatsapp_message",
+            to=to,
+            phone_number_id=phone_number_id,
+            session_id=session_id,
+            appId=appId,
+            endpoint=endpoint,
+            exception=e,
+        )
         return {"error": str(e)}
 
 def send_whatsapp_document_message(to, text, document, phone_number_id=PHONE_NUMBER_ID, session_id=None, appId=None, endpoint=None):
@@ -2956,6 +3006,18 @@ def send_whatsapp_document_message(to, text, document, phone_number_id=PHONE_NUM
         response_data = response.json()
         print(f"[send_whatsapp_document_message] WhatsApp API response status: {response.status_code}")
         print(f"[send_whatsapp_document_message] WhatsApp API response JSON: {response_data}")
+
+        if response.status_code >= 400 or (isinstance(response_data, dict) and response_data.get("error")):
+            notify_whatsapp_error(
+                operation="send_whatsapp_document_message",
+                to=to,
+                phone_number_id=phone_number_id,
+                session_id=session_id,
+                appId=appId,
+                endpoint=endpoint,
+                status_code=response.status_code,
+                response_data=response_data,
+            )
         
         # Extract message_id from response
         message_id = response_data.get("messages", [{}])[0].get("id") if response_data.get("messages") else None
@@ -2968,6 +3030,15 @@ def send_whatsapp_document_message(to, text, document, phone_number_id=PHONE_NUM
         return response_data
     except Exception as e:
         print(f"[send_whatsapp_document_message] Exception occurred: {e}")
+        notify_whatsapp_error(
+            operation="send_whatsapp_document_message",
+            to=to,
+            phone_number_id=phone_number_id,
+            session_id=session_id,
+            appId=appId,
+            endpoint=endpoint,
+            exception=e,
+        )
         return {"error": str(e)}
 
 def send_whatsapp_image_message(to, text, image, phone_number_id=PHONE_NUMBER_ID, session_id=None, appId=None, endpoint=None):
@@ -3006,6 +3077,18 @@ def send_whatsapp_image_message(to, text, image, phone_number_id=PHONE_NUMBER_ID
         response_data = response.json()
         print(f"[send_whatsapp_image_message] WhatsApp API response status: {response.status_code}")
         print(f"[send_whatsapp_image_message] WhatsApp API response JSON: {response_data}")
+
+        if response.status_code >= 400 or (isinstance(response_data, dict) and response_data.get("error")):
+            notify_whatsapp_error(
+                operation="send_whatsapp_image_message",
+                to=to,
+                phone_number_id=phone_number_id,
+                session_id=session_id,
+                appId=appId,
+                endpoint=endpoint,
+                status_code=response.status_code,
+                response_data=response_data,
+            )
         
         # Extract message_id from response
         message_id = response_data.get("messages", [{}])[0].get("id") if response_data.get("messages") else None
@@ -3018,6 +3101,15 @@ def send_whatsapp_image_message(to, text, image, phone_number_id=PHONE_NUMBER_ID
         return response_data
     except Exception as e:
         print(f"[send_whatsapp_image_message] Exception occurred: {e}")
+        notify_whatsapp_error(
+            operation="send_whatsapp_image_message",
+            to=to,
+            phone_number_id=phone_number_id,
+            session_id=session_id,
+            appId=appId,
+            endpoint=endpoint,
+            exception=e,
+        )
         return {"error": str(e)}
 
 def send_whatsapp_template_message(to, template_data, session_id=None, appId=None, endpoint=None, phone_number_id=PHONE_NUMBER_ID):
@@ -3039,6 +3131,18 @@ def send_whatsapp_template_message(to, template_data, session_id=None, appId=Non
         response = requests.post(url, headers=headers, json=payload)
         response_data = response.json()
         print(f"WhatsApp API response: {response_data}")
+
+        if response.status_code >= 400 or (isinstance(response_data, dict) and response_data.get("error")):
+            notify_whatsapp_error(
+                operation="send_whatsapp_template_message",
+                to=to,
+                phone_number_id=phone_number_id,
+                session_id=session_id,
+                appId=appId,
+                endpoint=endpoint,
+                status_code=response.status_code,
+                response_data=response_data,
+            )
         
         # Extract message_id from response
         message_id = response_data.get("messages", [{}])[0].get("id") if response_data.get("messages") else None
@@ -3052,6 +3156,15 @@ def send_whatsapp_template_message(to, template_data, session_id=None, appId=Non
         return response_data
     except Exception as e:
         print(f"[send_whatsapp_template_message] Error: {e}")
+        notify_whatsapp_error(
+            operation="send_whatsapp_template_message",
+            to=to,
+            phone_number_id=phone_number_id,
+            session_id=session_id,
+            appId=appId,
+            endpoint=endpoint,
+            exception=e,
+        )
         return {"error": str(e)}
 
 def send_whatsapp_otp_template_message(to, otp, session_id=None, appId=None, endpoint=None):
@@ -3105,6 +3218,18 @@ def send_whatsapp_otp_template_message(to, otp, session_id=None, appId=None, end
         response_data = response.json()
         
         print(f"WhatsApp API response: {response_data}")
+
+        if response.status_code >= 400 or (isinstance(response_data, dict) and response_data.get("error")):
+            notify_whatsapp_error(
+                operation="send_whatsapp_otp_template_message",
+                to=to,
+                phone_number_id=PHONE_NUMBER_ID,
+                session_id=session_id,
+                appId=appId,
+                endpoint=endpoint,
+                status_code=response.status_code,
+                response_data=response_data,
+            )
         
         # Extract message_id from response
         message_id = response_data.get("messages", [{}])[0].get("id") if response_data.get("messages") else None
@@ -3117,6 +3242,15 @@ def send_whatsapp_otp_template_message(to, otp, session_id=None, appId=None, end
         return response_data
     except Exception as e:
         print(f"[send_whatsapp_otp_template_message] Error: {e}")
+        notify_whatsapp_error(
+            operation="send_whatsapp_otp_template_message",
+            to=to,
+            phone_number_id=PHONE_NUMBER_ID,
+            session_id=session_id,
+            appId=appId,
+            endpoint=endpoint,
+            exception=e,
+        )
         return {"error": str(e)}
     
 def get_whatsapp_media_url(media_id: str) -> str:
@@ -3292,6 +3426,7 @@ def process_incoming_message_after_delay(
     sender_wa_id,
     phone_number_id,
     wa_message_id,
+    ai_mode,
 ):
     """
     Non-blocking worker that waits a short delay, then polls q endpoint and handles the full reply flow.
@@ -3326,9 +3461,11 @@ def process_incoming_message_after_delay(
                     return
 
                 if q_message_id:
-                    if phone_number_id:
+                    if ai_mode and phone_number_id:
                         print("[Webhook] respond=False, triggering typing indicator using q message_id")
                         send_typing_indicator(q_message_id, phone_number_id)
+                    elif not ai_mode:
+                        print("[Webhook] respond=False, ai_mode disabled; typing indicator skipped.")
                     else:
                         print("[Webhook] phone_number_id missing; typing indicator not sent.")
 
@@ -3393,10 +3530,12 @@ def process_incoming_message_after_delay(
 
                 if is_typing_signal(reply_text):
                     typing_indicator_message_id = response_payload.get("message_id") or wa_message_id
-                    if typing_indicator_message_id:
+                    if ai_mode and typing_indicator_message_id:
                         print("[Webhook] Typing text detected - triggering typing indicator")
                         print("=====typing_response====")
                         send_typing_indicator(typing_indicator_message_id, phone_number_id)
+                    elif not ai_mode:
+                        print("[Webhook] Typing signal detected but ai_mode disabled; indicator not sent.")
                     else:
                         print("[Webhook] Typing signal detected but message_id missing; indicator not sent.")
                     return
@@ -3503,13 +3642,20 @@ def verify_token():
     
     user=User.get_app_id(phone_number_id)
     print(user)
+
+    if not user:
+        print(f"[Webhook] No business user configured for phone_number_id={phone_number_id}")
+        return "EVENT_RECEIVED", 200
+
+    ai_mode_enabled = bool(getattr(user, "ai_mode", False))
     
     if wa_message_id:
-        typing_response = send_typing_indicator(wa_message_id, phone_number_id) #TODO: REACTIVATE THIS LATER!
-        # pass
-
-        print("=====typing_response====")
-        print(typing_response)
+        if ai_mode_enabled:
+            typing_response = send_typing_indicator(wa_message_id, phone_number_id) #TODO: REACTIVATE THIS LATER!
+            print("=====typing_response====")
+            print(typing_response)
+        else:
+            print("[Webhook] ai_mode disabled; initial typing indicator skipped.")
     
     appId = user.appId
     token = user.appId
@@ -3548,6 +3694,7 @@ def verify_token():
                 "sender_wa_id": sender_wa_id,
                 "phone_number_id": phone_number_id,
                 "wa_message_id": wa_message_id,
+                "ai_mode": ai_mode_enabled,
             },
             daemon=True,
         )
