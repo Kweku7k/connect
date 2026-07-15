@@ -1,5 +1,6 @@
 import base64
 import csv
+import io
 from datetime import datetime, timedelta
 from email.message import EmailMessage
 import hashlib
@@ -2218,6 +2219,90 @@ def get_broadcast_api_v2_job(api_user, job_id):
         "job": serialize_sms_broadcast_job(job)
     })
 
+
+@app.route('/api/v2/user/app-id', methods=['PATCH'])
+@user_api_key_required
+def update_api_user_app_id(api_user):
+    body = request.get_json(silent=True) or {}
+    user_id = body.get('userId')
+    new_app_id = str(body.get('appId', '')).strip()
+
+    if user_id is None:
+        return jsonify({
+            "status": "error",
+            "error": "userId is required."
+        }), 400
+
+    try:
+        user_id = int(user_id)
+    except (TypeError, ValueError):
+        return jsonify({
+            "status": "error",
+            "error": "userId must be a valid integer."
+        }), 400
+
+    target_user = User.query.get(user_id)
+    if target_user is None:
+        return jsonify({
+            "status": "error",
+            "error": "User not found."
+        }), 404
+
+    if target_user.id != api_user.id:
+        return jsonify({
+            "status": "error",
+            "error": "You can only update your own appId."
+        }), 403
+
+    if not new_app_id:
+        return jsonify({
+            "status": "error",
+            "error": "appId is required."
+        }), 400
+
+    if len(new_app_id) > 255:
+        return jsonify({
+            "status": "error",
+            "error": "appId must be 255 characters or fewer."
+        }), 400
+
+    if not re.match(r'^[A-Za-z0-9_-]+$', new_app_id):
+        return jsonify({
+            "status": "error",
+            "error": "appId can only contain letters, numbers, underscores, and hyphens."
+        }), 400
+
+    existing_user = User.query.filter(User.appId == new_app_id, User.id != target_user.id).first()
+    if existing_user is not None:
+        return jsonify({
+            "status": "error",
+            "error": "appId is already in use by another user."
+        }), 409
+
+    previous_app_id = target_user.appId
+    target_user.appId = new_app_id
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            "status": "error",
+            "error": "Could not update appId.",
+            "details": str(e)
+        }), 500
+
+    return jsonify({
+        "status": "ok",
+        "message": "appId updated successfully.",
+        "user": {
+            "id": target_user.id,
+            "username": target_user.username,
+            "appId": target_user.appId,
+            "previousAppId": previous_app_id
+        }
+    }), 200
+
 @app.route('/onboard', methods=['GET', 'POST'])
 def onboard():
     form = RegisterForm()
@@ -3388,6 +3473,309 @@ def send_whatsapp_otp():
     print("Normalized phone number: ", to)
     # return send_whatsapp_message(to, text)
     return send_whatsapp_otp_template_message(to, text)
+
+
+def validate_whatsapp_template_broadcast_body(body):
+    errors = []
+
+    if not isinstance(body, dict):
+        return None, [{"field": "body", "message": "JSON body is required."}]
+
+    template_name = body.get("template_name")
+    language_code = body.get("language_code", "en")
+    recipients = body.get("recipients")
+
+    if not isinstance(template_name, str) or not template_name.strip():
+        errors.append({"field": "template_name", "message": "template_name is required."})
+
+    if not isinstance(language_code, str) or not language_code.strip():
+        errors.append({"field": "language_code", "message": "language_code must be a non-empty string."})
+
+    if not isinstance(recipients, list) or len(recipients) == 0:
+        errors.append({"field": "recipients", "message": "recipients must be a non-empty array."})
+
+    if errors:
+        return None, errors
+
+    deduped_recipients = []
+    seen_phones = set()
+
+    for index, recipient in enumerate(recipients):
+        field_prefix = f"recipients[{index}]"
+
+        if not isinstance(recipient, dict):
+            errors.append({"field": field_prefix, "message": "recipient must be an object."})
+            continue
+
+        phone = recipient.get("phone")
+        if phone is None or str(phone).strip() == "":
+            errors.append({"field": f"{field_prefix}.phone", "message": "phone is required."})
+            continue
+
+        params = recipient.get("params")
+        if not isinstance(params, list) or len(params) != 3:
+            errors.append({"field": f"{field_prefix}.params", "message": "params must be an array with exactly 3 values."})
+            continue
+
+        if any(param is None or str(param).strip() == "" for param in params):
+            errors.append({"field": f"{field_prefix}.params", "message": "all 3 params must be non-empty values."})
+            continue
+
+        buttons = recipient.get("buttons", [])
+        normalized_buttons = []
+        if buttons is None:
+            buttons = []
+
+        if not isinstance(buttons, list):
+            errors.append({"field": f"{field_prefix}.buttons", "message": "buttons must be an array when provided."})
+            continue
+
+        for button_index, button in enumerate(buttons):
+            button_field_prefix = f"{field_prefix}.buttons[{button_index}]"
+
+            if not isinstance(button, dict):
+                errors.append({"field": button_field_prefix, "message": "button must be an object."})
+                continue
+
+            index = button.get("index")
+            sub_type = button.get("sub_type", "url")
+            button_params = button.get("params", [])
+
+            if index is None or str(index).strip() == "":
+                errors.append({"field": f"{button_field_prefix}.index", "message": "index is required."})
+                continue
+
+            if not isinstance(sub_type, str) or not sub_type.strip():
+                errors.append({"field": f"{button_field_prefix}.sub_type", "message": "sub_type must be a non-empty string."})
+                continue
+
+            if not isinstance(button_params, list) or len(button_params) == 0:
+                errors.append({"field": f"{button_field_prefix}.params", "message": "params must be a non-empty array."})
+                continue
+
+            if any(param is None or str(param).strip() == "" for param in button_params):
+                errors.append({"field": f"{button_field_prefix}.params", "message": "button params must be non-empty values."})
+                continue
+
+            normalized_buttons.append({
+                "index": str(index),
+                "sub_type": sub_type.strip().lower(),
+                "params": [str(param) for param in button_params]
+            })
+
+        normalized_phone = normalize_phone_number(str(phone))
+        if normalized_phone in seen_phones:
+            continue
+
+        seen_phones.add(normalized_phone)
+        deduped_recipients.append({
+            "phone": normalized_phone,
+            "params": [str(param) for param in params],
+            "buttons": normalized_buttons
+        })
+
+    if errors:
+        return None, errors
+
+    return {
+        "template_name": template_name.strip(),
+        "language_code": language_code.strip(),
+        "recipients": deduped_recipients
+    }, []
+
+
+def build_whatsapp_template_broadcast_body_from_csv(csv_file, template_name, language_code="en"):
+    if csv_file is None:
+        return None, [{"field": "file", "message": "CSV file is required for multipart requests."}]
+
+    if not isinstance(template_name, str) or not template_name.strip():
+        return None, [{"field": "template_name", "message": "template_name is required in form-data."}]
+
+    try:
+        csv_text = csv_file.read().decode("utf-8-sig")
+    except Exception:
+        return None, [{"field": "file", "message": "CSV file must be UTF-8 encoded."}]
+
+    reader = csv.DictReader(io.StringIO(csv_text))
+    field_names = reader.fieldnames or []
+
+    required_columns = ["phone", "param1", "param2", "param3"]
+    missing_columns = [col for col in required_columns if col not in field_names]
+    if missing_columns:
+        return None, [{
+            "field": "file",
+            "message": f"Missing required CSV columns: {', '.join(missing_columns)}"
+        }]
+
+    button_indexes = set()
+    for column in field_names:
+        match = re.fullmatch(r"button_(\d+)_param", column)
+        if match:
+            button_indexes.add(match.group(1))
+
+    recipients = []
+    for row_index, row in enumerate(reader, start=2):
+        if not row:
+            continue
+
+        phone = (row.get("phone") or "").strip()
+        param1 = (row.get("param1") or "").strip()
+        param2 = (row.get("param2") or "").strip()
+        param3 = (row.get("param3") or "").strip()
+
+        # Skip empty rows.
+        if not (phone or param1 or param2 or param3):
+            continue
+
+        recipient = {
+            "phone": phone,
+            "params": [param1, param2, param3]
+        }
+
+        buttons = []
+        for index in sorted(button_indexes, key=int):
+            button_param = (row.get(f"button_{index}_param") or "").strip()
+            if not button_param:
+                continue
+
+            button_index = (row.get(f"button_{index}_index") or str(index)).strip() or str(index)
+            button_sub_type = (row.get(f"button_{index}_sub_type") or "url").strip() or "url"
+
+            buttons.append({
+                "index": button_index,
+                "sub_type": button_sub_type,
+                "params": [button_param]
+            })
+
+        if buttons:
+            recipient["buttons"] = buttons
+
+        recipients.append(recipient)
+
+    if len(recipients) == 0:
+        return None, [{"field": "file", "message": "CSV file has no valid recipient rows."}]
+
+    return {
+        "template_name": template_name.strip(),
+        "language_code": (language_code or "en").strip() or "en",
+        "recipients": recipients
+    }, []
+
+
+@app.route('/api/v2/whatsapp/broadcast-template', methods=['POST'])
+@user_api_key_required
+def whatsapp_broadcast_template_api_v2(api_user):
+    content_type = (request.content_type or "").lower()
+    requested_phone_number_id = None
+
+    if "multipart/form-data" in content_type:
+        csv_file = request.files.get("file") or request.files.get("csv_file")
+        template_name = request.form.get("template_name")
+        language_code = request.form.get("language_code", "en")
+        requested_phone_number_id = request.form.get("phone_number_id")
+        body, csv_errors = build_whatsapp_template_broadcast_body_from_csv(csv_file, template_name, language_code)
+        if csv_errors:
+            return jsonify({
+                "status": "error",
+                "errors": csv_errors
+            }), 400
+    else:
+        body = request.get_json(silent=True)
+        if isinstance(body, dict):
+            requested_phone_number_id = body.get("phone_number_id")
+
+    validated_body, errors = validate_whatsapp_template_broadcast_body(body)
+
+    if errors:
+        return jsonify({
+            "status": "error",
+            "errors": errors
+        }), 400
+
+    if requested_phone_number_id is not None:
+        requested_phone_number_id = str(requested_phone_number_id).strip()
+
+    phone_number_id = requested_phone_number_id or api_user.waId or PHONE_NUMBER_ID
+    if not phone_number_id:
+        return jsonify({
+            "status": "error",
+            "errors": [{
+                "field": "phone_number_id",
+                "message": "No WhatsApp phone_number_id configured for this API user."
+            }]
+        }), 400
+
+    template_name = validated_body["template_name"]
+    language_code = validated_body["language_code"]
+    recipients = validated_body["recipients"]
+
+    results = []
+    success_count = 0
+    failed_count = 0
+
+    for recipient in recipients:
+        components = [{
+            "type": "body",
+            "parameters": [
+                {"type": "text", "text": recipient["params"][0]},
+                {"type": "text", "text": recipient["params"][1]},
+                {"type": "text", "text": recipient["params"][2]}
+            ]
+        }]
+
+        for button in recipient.get("buttons", []):
+            components.append({
+                "type": "button",
+                "sub_type": button["sub_type"],
+                "index": button["index"],
+                "parameters": [
+                    {"type": "text", "text": value}
+                    for value in button["params"]
+                ]
+            })
+
+        template_data = {
+            "name": template_name,
+            "language": {"code": language_code},
+            "components": components
+        }
+
+        response_data = send_whatsapp_template_message(
+            recipient["phone"],
+            template_data,
+            appId=api_user.appId,
+            endpoint="/api/v2/whatsapp/broadcast-template",
+            phone_number_id=phone_number_id
+        )
+
+        has_error = isinstance(response_data, dict) and response_data.get("error")
+        if has_error:
+            failed_count += 1
+            results.append({
+                "phone": recipient["phone"],
+                "status": "failed",
+                "response": response_data
+            })
+        else:
+            success_count += 1
+            results.append({
+                "phone": recipient["phone"],
+                "status": "sent",
+                "response": response_data
+            })
+
+    final_status = "success" if failed_count == 0 else ("failed" if success_count == 0 else "partial")
+
+    return jsonify({
+        "status": final_status,
+        "template_name": template_name,
+        "language_code": language_code,
+        "total_recipients": len(recipients),
+        "sent_recipients": success_count,
+        "failed_recipients": failed_count,
+        "phone_number_id": phone_number_id,
+        "results": results
+    }), 200
 
 WHATSAPP_CERT_FILE = "certs/whatsapp_certificate.pem"
 
