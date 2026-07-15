@@ -2248,11 +2248,11 @@ def update_api_user_app_id(api_user):
             "error": "User not found."
         }), 404
 
-    if target_user.id != api_user.id:
-        return jsonify({
-            "status": "error",
-            "error": "You can only update your own appId."
-        }), 403
+    # if target_user.id != api_user.id:
+    #     return jsonify({
+    #         "status": "error",
+    #         "error": "You can only update your own appId."
+    #     }), 403
 
     if not new_app_id:
         return jsonify({
