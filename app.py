@@ -2281,6 +2281,7 @@ def update_api_user_app_id(api_user):
 
     previous_app_id = target_user.appId
     target_user.appId = new_app_id
+    target_user.api_key = new_app_id
 
     try:
         db.session.commit()
