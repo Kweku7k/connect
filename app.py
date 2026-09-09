@@ -3423,7 +3423,12 @@ def send_message():
     data = request.get_json()
     print("Data: ", data)
     to = data.get("to")
-    to = normalize_phone_number(to)
+    # A Business-Scoped User ID (e.g. "GH.1838978057109231") isn't a phone
+    # number - normalize_phone_number()'s "last 9 digits + 233" logic would
+    # mangle it into a bogus number that then fails to deliver. Only normalize
+    # when it actually looks like a phone number.
+    if not is_bsuid(to):
+        to = normalize_phone_number(to)
     print("Normalized phone number: ", to)
     text = data.get("text")
     print(text)

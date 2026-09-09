@@ -70,7 +70,13 @@ def get_user_data_from_whatsapp_payload(body):
         print("Contact:", contact)
 
         name = contact.get("profile", {}).get("name")
-        wa_id = contact.get("wa_id")
+        # wa_id (the real phone number) is omitted by Meta when the sender has a
+        # WhatsApp username and hasn't shared their number with us recently - in
+        # that case only the opaque Business-Scoped User ID (user_id, e.g.
+        # "GH.1838978057109231") is present. Fall back to it so "phone" is never
+        # None for these senders - a None phone here makes the concierge task
+        # abort before ever attempting a reply (see q/tasks/concierge.py).
+        wa_id = contact.get("wa_id") or contact.get("user_id")
 
         print("Name:", name)
         print("WA ID:", wa_id)
