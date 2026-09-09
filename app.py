@@ -2951,6 +2951,30 @@ def log_message_to_db(session_id, message_id, phone_number, message_type, messag
         db.session.rollback()
         return False
 
+# Business-Scoped User ID (BSUID): '<2-letter ISO country code>.<up to 128 alphanumeric chars>'.
+# Meta sends this instead of a phone number (wa_id/from) when the sender has a WhatsApp
+# username and hasn't shared their number with this business in the last 30 days.
+BSUID_PATTERN = re.compile(r'^[A-Za-z]{2}\.[A-Za-z0-9]+$')
+
+
+def is_bsuid(identifier):
+    return bool(identifier) and bool(BSUID_PATTERN.match(str(identifier)))
+
+
+def whatsapp_recipient_fields(to):
+    """
+    Build the recipient field(s) for a WhatsApp Cloud API send payload.
+
+    A normal phone number goes in "to". A BSUID (no phone number known for this
+    contact) must go in "recipient" instead - sending it as "to" is rejected by
+    the Graph API, so a BSUID sender never gets a reply and the failure never
+    reaches MessageLog because the send fails before a message_id comes back.
+    """
+    if is_bsuid(to):
+        return {"recipient_type": "individual", "recipient": to}
+    return {"recipient_type": "individual", "to": to}
+
+
 def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID, session_id=None, appId=None, endpoint=None, delivery_message_id=None):
     url = f"https://graph.facebook.com/v21.0/{phone_number_id}/messages"
     
@@ -3003,11 +3027,11 @@ def send_whatsapp_message(to, text, phone_number_id=PHONE_NUMBER_ID, session_id=
 
     payload = {
         "messaging_product": "whatsapp",
-        "to": to,
+        **whatsapp_recipient_fields(to),
         "type": "text",
         "text": {"body": text}
     }
-    
+
     print("Sending WhatsApp message to: ", to)
     pprint.pprint(payload)
 
@@ -3075,8 +3099,7 @@ def send_whatsapp_document_message(to, text, document, phone_number_id=PHONE_NUM
     
     payload = {
         "messaging_product": "whatsapp",
-        "recipient_type":"individual",
-        "to": to,
+        **whatsapp_recipient_fields(to),
         "type": "document",
         "document": {
             "link": document,
@@ -3150,8 +3173,7 @@ def send_whatsapp_image_message(to, text, image, phone_number_id=PHONE_NUMBER_ID
     
     payload = {
         "messaging_product": "whatsapp",
-        "recipient_type":"individual",
-        "to": to,
+        **whatsapp_recipient_fields(to),
         "type": "image",
         "image": {"link": image}
     }
@@ -3206,7 +3228,7 @@ def send_whatsapp_template_message(to, template_data, session_id=None, appId=Non
     }
     payload = {
         "messaging_product": "whatsapp",
-        "to": to,
+        **whatsapp_recipient_fields(to),
         "type": "template",
         "template": template_data
     }
@@ -3291,7 +3313,7 @@ def send_whatsapp_otp_template_message(to, otp, session_id=None, appId=None, end
     
     payload = {
         "messaging_product": "whatsapp",
-        "to": to,
+        **whatsapp_recipient_fields(to),
         "type": "template",
         "template": template_data
     }
@@ -3977,6 +3999,11 @@ def verify_token():
         if messages:
             msg = messages[0]
             # sender_wa_id = msg.get("from", None)
+            # "from" is the phone number (wa_id). If it's missing, Meta gives us a
+            # Business-Scoped User ID (BSUID) in "from_user_id" instead - this happens
+            # when the sender has a WhatsApp username and hasn't shared their number
+            # with us recently. sender_wa_id may hold either; whatsapp_recipient_fields()
+            # in send_whatsapp_message/etc. handles addressing a reply correctly either way.
             sender_wa_id = msg.get("from") or msg.get("from_user_id")
 
             wa_message_id = msg.get("id", None)
