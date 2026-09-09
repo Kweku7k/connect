@@ -3976,7 +3976,8 @@ def verify_token():
         messages = value.get("messages", [])
         if messages:
             msg = messages[0]
-            sender_wa_id = msg.get("from", None)
+            # sender_wa_id = msg.get("from", None)
+            sender_wa_id = msg.get("from") or msg.get("from_user_id")
 
             wa_message_id = msg.get("id", None)
             print("GET WA INCOMING MSG ID!")
