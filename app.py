@@ -1396,7 +1396,9 @@ def updateGroup(id):
         reportError(e)
 
 def convertToPhoneNumber(phone):
-    phone = phone.replace(' ','')
+    if not phone:
+        return None
+    phone = str(phone).replace(' ','')
     phone = "0"+phone[-9:]
     return phone
 
@@ -1453,17 +1455,24 @@ def upload_file():
             # filename =  request.form.get('name',filename)
 
             # Process the CSV file (for demonstration purposes)
-            with open(filename, mode='r') as csv_file:
+            # utf-8-sig strips the BOM Excel adds to the first header
+            with open(filename, mode='r', encoding='utf-8-sig') as csv_file:
                 csv_reader = csv.DictReader(csv_file)
                 for row in csv_reader:
                     print(row)
+                    # normalise headers/values so "Phone", " phone " etc. all match
+                    row = {(k or '').strip().lower(): (v or '').strip() for k, v in row.items() if isinstance(v, str) or v is None}
+                    phone = row.get('phone') or row.get('phone number') or row.get('phonenumber')
+                    if not phone:
+                        print("Skipping row with no phone number:", row)
+                        continue
                     # check if phone number already exists
                     # findExistingPhoneNumber()
                     
                     email = row.get('email', '')
                     if email == '':
-                        email = "connect"+row.get('phone','')+"@prestoghana.com"
-                    newcontact = Contacts(name=row.get('name'), phoneNumber=convertToPhoneNumber(row.get('phone')), appId=appId, slug=slug, groupId=newgroup.id, email=email)
+                        email = "connect"+phone+"@prestoghana.com"
+                    newcontact = Contacts(name=row.get('name'), phoneNumber=convertToPhoneNumber(phone), appId=appId, slug=slug, groupId=newgroup.id, email=email)
                     
                     data = {
                         'phone': newcontact.phoneNumber,
