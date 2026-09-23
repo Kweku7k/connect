@@ -132,7 +132,7 @@ def reportTelegram(error_message):
 def login_user(user):
     print("Logging in :")
     print(user)
-    token = jwt.encode({'user':user.id, 'exp':datetime.now+datetime.timedelta(minutes=30)}, app.config['SECRET_KEY'])
+    token = jwt.encode({'user':user.id, 'exp':datetime.now() + timedelta(minutes=30)}, app.config['SECRET_KEY'])
     session['jwt']=token
     session['current_user'] = user.id
     return token
@@ -827,7 +827,7 @@ def broadcast(groupId = None):
                 flash(f'You dont have enough credits, Please purchase a bundle to continue.')
                 return redirect(url_for('purchase'))
             
-            message = form.message.data + f"\n{datetime.now.strftime('%c')}"+"\nPowered By PrestoConnect"
+            message = form.message.data + f"\n{datetime.now().strftime('%c')}"+"\nPowered By PrestoConnect"
             groupId = form.group.data
             senderId = form.senderId.data
 
@@ -922,7 +922,7 @@ def broadcastemail(groupId = None):
                 flash(f'You dont have enough credits, Please purchase a bundle to continue.')
                 return redirect(url_for('purchase'))
             
-            message = form.message.data + f"\n{datetime.now.strftime('%c')}"+"\nPowered By PrestoConnect"
+            message = form.message.data + f"\n{datetime.now().strftime('%c')}"+"\nPowered By PrestoConnect"
             groupId = form.group.data
             # senderId = form.senderId.data
 
@@ -1420,7 +1420,7 @@ def upload_file():
         # appId = request.form.get('appId','default')
         appId = current_user.appId
 
-        slug=appId + name.replace(" ","")+datetime.now.strftime('%c')
+        slug=appId + name.replace(" ","")+datetime.now().strftime('%c')
         print("name:",name, "slug:",slug)
 
         if Groups.query.filter_by(slug=slug).first() is None:
@@ -1516,7 +1516,7 @@ def group(groupId):
         csv_content = csv_file.read().decode('utf-8')
 
         # Generate a unique file name with date-time stamp
-        timestamp = datetime.now.strftime('%Y-%m-%d_%H-%M-%S')
+        timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         # filename = f"uploaded_csv_{timestamp}.csv"
         filename = f"{timestamp}-rawdata.csv"
 
