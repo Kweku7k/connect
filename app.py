@@ -4325,5 +4325,55 @@ def list_whatsapp_templates():
 def whatsapp_templates():
     return render_template('messaagetemplate.html')
 
+
+def _internal_key_valid():
+    expected = os.environ.get("CONNECT_INTERNAL_KEY", "")
+    provided = request.headers.get("X-Internal-Key", "")
+    return bool(expected) and hmac.compare_digest(expected, provided)
+
+
+@app.route('/internal/whatsapp-numbers', methods=['POST', 'DELETE'])
+def internal_whatsapp_numbers():
+    """Lets Q route a WhatsApp number (by Meta phone_number_id) to one of its businesses.
+
+    POST upserts where the number's messages go: app_id (the Q business API key),
+    endpoint (the Q URL to forward to), wa_active and ai_mode. DELETE turns the number
+    off so it replies with wa_default_message instead. Q calls this when staff assign
+    or release a number (q.whatsapp.numbers); nothing else does."""
+    if not _internal_key_valid():
+        return jsonify({"error": "unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    phone_number_id = str(data.get("phone_number_id") or "").strip()
+    if not phone_number_id.isdigit():
+        return jsonify({"error": "phone_number_id is required"}), 400
+
+    user = User.query.filter_by(waId=phone_number_id).first()
+    if request.method == 'DELETE':
+        if user is None:
+            return jsonify({"status": "ok", "phone_number_id": phone_number_id, "wa_active": False})
+        user.wa_active = False
+        user.wa_default_message = data.get("wa_default_message") or user.wa_default_message
+        db.session.commit()
+        return jsonify({"status": "ok", "phone_number_id": phone_number_id, "wa_active": False})
+
+    app_id = str(data.get("app_id") or "").strip()
+    endpoint = str(data.get("endpoint") or "").strip()
+    if not app_id or not endpoint.startswith("https://"):
+        return jsonify({"error": "app_id and an https endpoint are required"}), 400
+    if user is None:
+        user = User(waId=phone_number_id, username=data.get("display_number") or phone_number_id)
+        db.session.add(user)
+    user.appId = app_id
+    user.slug = app_id
+    user.endpoint = endpoint
+    user.wa_active = bool(data.get("wa_active", True))
+    user.ai_mode = bool(data.get("ai_mode", True))
+    if data.get("display_number"):
+        user.phone = data["display_number"]
+    db.session.commit()
+    return jsonify({"status": "ok", "phone_number_id": phone_number_id, "app_id": app_id,
+                    "endpoint": endpoint, "wa_active": user.wa_active})
+
+
 if __name__ == '__main__':
     app.run(port=5000,host='0.0.0.0',debug=True)
