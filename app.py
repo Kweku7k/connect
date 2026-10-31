@@ -2617,6 +2617,8 @@ def fetch_metadata_from_urls(urls):
     return metadata_list
     
 ####### Middleware #######
+SESSION_ID_MAX_LENGTH = 36  # session.session_id is VARCHAR(36)
+
 # Helper function to check if session exists
 def check_session_exists(phone_number):
     session = Session.query.filter_by(phone_number=phone_number).first()
@@ -2624,11 +2626,12 @@ def check_session_exists(phone_number):
 
 # Helper function to create a new session
 def create_session(phone_number, appId, token):
-    session_id = phone_number+"+"+str(uuid.uuid4())
-    
     uid = base64.urlsafe_b64encode(uuid.uuid4().bytes).decode('utf-8')[:10]
-    session_id = phone_number + "-" + token + uid
-    
+    # Long tokens (an MCP agent's API key is 24 characters) are shortened so the id fits the
+    # column; the random uid keeps it unique.
+    room = max(SESSION_ID_MAX_LENGTH - len(phone_number) - 1 - len(uid), 0)
+    session_id = (phone_number + "-" + (token or "")[:room] + uid)[:SESSION_ID_MAX_LENGTH]
+
     try:
         new_session = Session(
             phone_number=phone_number,
@@ -2645,7 +2648,10 @@ def create_session(phone_number, appId, token):
     except Exception as e:
         print(f"Error creating session: {e}")
         db.session.rollback()
-        return check_session_exists(phone_number)
+        # Fall back only to this business's own session: another business's session would mix
+        # the two conversations.
+        session = Session.query.filter_by(phone_number=phone_number, token=token, appId=appId).first()
+        return session.session_id if session else None
 
 # Function to get or create session for a phone number
 def get_or_create_session(phone_number, appId,token):
